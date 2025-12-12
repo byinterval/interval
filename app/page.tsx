@@ -1,7 +1,7 @@
 // app/page.tsx
 import { client } from "@/lib/sanity";
-import CalmEntry from './components/CalmEntry';
-import MoodFilter from './components/MoodFilter';
+import CalmEntry from '@/app/components/CalmEntry';
+import MoodFilter from '@/app/components/MoodFilter';
 
 async function getMoods() {
   // This is the "Atmospheric Search" logic bridge [cite: 155]
