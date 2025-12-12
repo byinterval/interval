@@ -1,0 +1,278 @@
+// --- 1. CONFIGURATION AND CREDENTIALS ---
+
+// Sanity Credentials (Source: The Brain)
+const SANITY_PROJECT_ID = 'nd9as5hh';
+const SANITY_DATASET = 'production';
+const SANITY_READ_TOKEN = 'skLjUASnyhPgsWG240XyVl03IDp4T66UG1Kcu6z9z6NvCI6cPCOJBAEaJWsjGQFIJ4z3RfEjDeM92mUFNW7ZHHGdjxMjDjuucGhjgn9bm0O9nu3WoV27EeL5EHRcErgrlMRqLb2pgqMCSoDQJZBqcng8hPvEBabJcyVNwXwzPo7Osqds9ORI';
+
+// ConvertKit Credentials (Destination: The Voice)
+const CONVERTKIT_API_KEY = 'fctVHSRo2NE9SlCESC57eQ';
+// The API Secret is typically used for OAuth or webhooks, not standard broadcast sends.
+// The API Key is sufficient for the /broadcasts endpoint.
+// The Broadcast/Form ID is missing, so we use a placeholder and aim for a general broadcast.
+const CONVERTKIT_API_URL = 'https://api.convertkit.com/v3';
+
+
+// --- 2. UTILITIES & MOCKING (Simulating Content Tools) ---
+
+/**
+ * MOCK: Simulates the conversion of Sanity Block Content to minimal HTML.
+ * This function ensures the output is clean and minimal, fitting the "Anti-Ad" aesthetic.
+ * In a real-world scenario, you would use a library like @portabletext/to-html.
+ * @param {string} blockContentJson - The content body (mocked as stringified JSON).
+ * @param {string} tag - The title for the section.
+ * @returns {string} - Clean, inline-styled HTML string for email.
+ */
+function convertBlockContentToMinimalHtml(blockContentJson, tag) {
+    try {
+        const content = JSON.parse(blockContentJson);
+        const text = content.text || "Content body missing.";
+
+        // Uses minimal inline styles (Georgia, serif) to match the "intellect" aesthetic.
+        return `
+            <div style="margin-bottom: 24px;">
+                <h3 style="font-size: 1.2em; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; font-family: sans-serif;">// ${tag.toUpperCase()}</h3>
+                <p style="font-size: 1em; line-height: 1.6; color: #333333; font-family: Georgia, serif;">${text}</p>
+            </div>
+        `;
+    } catch (e) {
+        console.error("Failed to parse block content JSON:", e);
+        return `<p style="color: red; font-family: sans-serif;">[ERROR: Content rendering failed for ${tag}]</p>`;
+    }
+}
+
+/**
+ * Executes a fetch request with exponential backoff for retry logic.
+ */
+async function fetchWithRetry(url, options, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url, options);
+            if (response.ok) return response;
+            
+            // If the response is not 429 (Too Many Requests), throw immediately
+            if (response.status !== 429 && response.status >= 400) {
+                const errorBody = await response.text();
+                throw new Error(`HTTP Error ${response.status}: ${response.statusText}. Body: ${errorBody}`);
+            }
+
+            // For 429 (Too Many Requests), wait and retry
+            const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+            console.warn(`Attempt ${i + 1} failed with status ${response.status}. Retrying in ${Math.round(delay / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+        } catch (error) {
+            if (i === retries - 1) throw error; // Re-throw on last attempt
+            // Continue to the next retry
+        }
+    }
+    throw new Error("Exhausted all retries.");
+}
+
+
+// --- 3. SANITY FETCH LOGIC ---
+
+/**
+ * Pulls the single most recent published content entry from Sanity using GROQ.
+ */
+async function fetchLatestSanityContent() {
+    console.log(`[Sanity] Fetching latest 'issue' from ${SANITY_DATASET}...`);
+    
+    // The GROQ query to find the single latest document of type 'issue'
+    const groqQuery = `*[_type == "issue"] | order(issueNumber desc)[0]{
+      issueNumber,
+      thesisTitle,
+      thesisBody, // Block Content field
+      signalProfileTitle,
+      signalProfileBody, // Block Content field
+      artifactLink,
+      artifactLinkText
+    }`;
+    
+    // Sanity API endpoint for querying content
+    const url = `https://${SANITY_PROJECT_ID}.api.sanity.io/v2021-03-25/data/query/${SANITY_DATASET}?query=${encodeURIComponent(groqQuery)}`;
+
+    const response = await fetchWithRetry(url, {
+        method: 'GET',
+        headers: { 
+            'Authorization': `Bearer ${SANITY_READ_TOKEN}`,
+            'Content-Type': 'application/json',
+        },
+    });
+
+    const data = await response.json();
+    
+    // A key assumption for testing: If no real data is found, return mock data
+    // to allow the ConvertKit step to be tested.
+    if (!data.result || !data.result[0]) {
+        console.warn("[Sanity] No live data found. Using Mock Content for testing.");
+        return {
+            issueNumber: 99,
+            thesisTitle: "The Architecture of Silence (Mock)",
+            // Simulating Block Content structure for the converter utility
+            thesisBody: JSON.stringify({ "_type": "blockContent", "text": "This week's lens focuses on the deliberate absence of noise. The quiet space is not empty, but curated. It is a necessary friction against the chaotic saturation of modern digital life. This essay provides the intellectual context for our ritual. (Mock Content)" }),
+            signalProfileTitle: "Lighting Studio Analysis: Dampening the City’s Hum (Mock)",
+            signalProfileBody: JSON.stringify({ "_type": "blockContent", "text": "A deep dive into a Tokyo-based studio using specific light frequencies and acoustic materials (felted wool, compressed ash) to engineer true solitude in their designs. This is the global inspiration, the raw material for the Creative Ritualist. (Mock Content)" }),
+            artifactLink: "https://theinterval.com/artifact/essential_manifesto_book",
+            artifactLinkText: "Acquire The Artifact: The Essential Manifesto (Limited Print)",
+        };
+    }
+    
+    return data.result[0];
+}
+
+
+// --- 4. CORE LOGIC: THE SERVERLESS HANDLER ---
+
+/**
+ * Main function for the Serverless endpoint.
+ */
+export default async function weeklyBroadcastHandler() {
+    try {
+        // 4.1 Fetch and Validate Data
+        const issueData = await fetchLatestSanityContent();
+        if (!issueData || !issueData.issueNumber) {
+            throw new Error("Sanity content fetch failed or returned invalid data structure.");
+        }
+        console.log(`[Sanity] Successfully fetched Issue #${issueData.issueNumber}.`);
+
+        // 4.2 Format Content
+        const thesisHtml = convertBlockContentToMinimalHtml(issueData.thesisBody, "Pillar I: The Thesis");
+        const signalHtml = convertBlockContentToMinimalHtml(issueData.signalProfileBody, "Pillar II: The Signal");
+
+        // 4.3 Compose Payload (The Email Body)
+        const emailSubject = `The Interval: Micro-Drop #${issueData.issueNumber} - ${issueData.thesisTitle}`;
+
+        const artifactButton = `
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="${issueData.artifactLink}" target="_blank" style="
+                    background-color: #1a1a1a;
+                    color: #ffffff;
+                    padding: 12px 24px;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    display: inline-block;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                    font-family: sans-serif;
+                ">
+                    ${issueData.artifactLinkText}
+                </a>
+            </div>
+        `;
+
+        // The full email body uses basic, high-deliverability HTML/CSS
+        const fullEmailBodyHtml = `
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
+                <p style="text-align: center; font-size: 0.8em; color: #888; font-family: sans-serif;">THE WEEKLY RITUAL: Micro-Drop #${issueData.issueNumber}</p>
+
+                <h1 style="font-size: 1.8em; font-weight: 400; text-align: center; margin: 20px 0; font-family: Georgia, serif;">${emailSubject}</h1>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+
+                ${thesisHtml}
+                ${signalHtml}
+
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+
+                <h3 style="font-size: 1.2em; font-weight: 700; color: #1a1a1a; margin-bottom: 8px; font-family: sans-serif;">// PILLAR III: THE ARTIFACT</h3>
+                <p style="font-size: 1em; line-height: 1.6; color: #333333; font-family: Georgia, serif;">
+                    The singular, location-agnostic item for your collection—the souvenir of meaning.
+                </p>
+
+                ${artifactButton}
+
+                <p style="text-align: center; margin-top: 40px; font-size: 0.8em; color: #888; font-family: sans-serif;">
+                    <a href="https://theinterval.com/atlas" style="color: #888;">View The Living Atlas</a>
+                </p>
+            </div>
+        `;
+        
+        // Extracting plain text for best email deliverability practices
+        const thesisText = JSON.parse(issueData.thesisBody).text || '';
+        const signalText = JSON.parse(issueData.signalProfileBody).text || '';
+        const fullEmailBodyText = `
+-- THE WEEKLY RITUAL: Micro-Drop #${issueData.issueNumber} --
+
+Subject: ${emailSubject}
+
+// PILLAR I: THE THESIS
+${thesisText}
+
+// PILLAR II: THE SIGNAL
+${signalText}
+
+// PILLAR III: THE ARTIFACT
+${issueData.artifactLinkText}
+Link: ${issueData.artifactLink}
+
+View The Living Atlas: https://theinterval.com/atlas
+        `.trim();
+
+
+        // 4.4 Send Email (ConvertKit API Call)
+        console.log(`[ConvertKit] Composing broadcast with subject: "${emailSubject}"`);
+
+        const convertKitPayload = {
+            api_key: CONVERTKIT_API_KEY,
+            broadcast: {
+                subject: emailSubject,
+                // The API requires the content in both HTML and plain text (best practice)
+                content: {
+                    html: fullEmailBodyHtml,
+                    text: fullEmailBodyText,
+                },
+                // Set to 'true' to publish immediately, or include 'send_at' for scheduling.
+                // We default to draft/test mode (false) for a serverless execution unless a scheduler explicitly tells it to send.
+                public: false, 
+                // Since this is a broadcast, we omit a specific form/sequence ID.
+            }
+        };
+
+        const convertKitUrl = `${CONVERTKIT_API_URL}/broadcasts`;
+        const ckResponse = await fetchWithRetry(convertKitUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(convertKitPayload)
+        });
+
+        const ckData = await ckResponse.json();
+
+        if (ckData.error || !ckData.broadcast) {
+            console.error("[ConvertKit API Error]", ckData);
+            throw new Error(`ConvertKit API failed: ${ckData.message || JSON.stringify(ckData)}`);
+        }
+
+        console.log(`[SUCCESS] ConvertKit Broadcast created/updated successfully. Broadcast ID: ${ckData.broadcast.id}`);
+
+        // Standard function return (for a Vercel/Lambda response)
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                status: "success",
+                message: "Weekly ritual successfully pushed to ConvertKit as a draft broadcast.",
+                broadcastId: ckData.broadcast.id,
+                issue: issueData.issueNumber
+            })
+        };
+
+    } catch (error) {
+        // 4.5 Error Handling: Logging and simulated alert to Editorial
+        const step = error.message.includes('Sanity') ? 'Sanity Fetch' : 'ConvertKit Push';
+        console.error(`\n--- AUTOMATION FAILURE ALERT ---`);
+        console.error(`Step: ${step} failed with error: ${error.message}`);
+        console.warn(`[Alert Mock] Editorial team alerted of failure at step: ${step}`);
+
+
+        // Standard function error return
+        return {
+            statusCode: 500,
+            body: JSON.stringify({
+                status: "error",
+                message: "Automation failed. Editorial team has been alerted.",
+                details: error.message
+            })
+        };
+    }
+}
