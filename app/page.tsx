@@ -1,6 +1,6 @@
 import { client } from "@/lib/sanity";
 import CalmEntry from './components/CalmEntry';
-import MoodFilter from './components/MoodFilter';
+import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
 
 async function getMoods() {
@@ -32,7 +32,7 @@ export default async function Home() {
       </section>
 
       {/* 2. Atmospheric Filter */}
-      <MoodFilter />
+      <HomepageFilter />
 
       {/* 3. The Signal (Split Layout: Text Left / Image Right) */}
       <article className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center mt-32 border-t border-secondary-bg pt-24">

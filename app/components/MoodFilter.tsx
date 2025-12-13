@@ -1,27 +1,53 @@
 'use client';
 
-const moods = ["Silence", "Texture", "Morning", "Patina", "Low Light"];
+interface MoodFilterProps {
+  moods: string[];
+  activeMood: string | null;
+  onMoodSelect: (mood: string) => void;
+}
 
-export default function MoodFilter() {
+export default function MoodFilter({ moods, activeMood, onMoodSelect }: MoodFilterProps) {
   return (
     <nav className="flex flex-col items-center justify-center space-y-6 py-12">
-      <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown/70">
+      <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown/70 transition-opacity duration-500">
         Filter the Archive by Atmospheric Mood
       </span>
       
-      <div className="flex flex-wrap justify-center gap-3">
-        {moods.map((mood) => (
-          <button 
-            key={mood}
-            className="font-sans-body text-xs uppercase tracking-wide 
-                       text-accent-brown bg-transparent border border-accent-brown/30
-                       px-5 py-2 rounded-full
-                       hover:bg-accent-brown hover:text-primary-bg hover:border-accent-brown
-                       transition-all duration-300 ease-out"
-          >
-            {mood}
-          </button>
-        ))}
+      <div className="flex flex-wrap justify-center gap-3 max-w-4xl px-6">
+        {moods.map((mood) => {
+          const isActive = activeMood === mood;
+          
+          return (
+            <button 
+              key={mood}
+              onClick={() => onMoodSelect(mood)}
+              className={`
+                font-sans-body text-xs uppercase tracking-wide 
+                px-6 py-3 rounded-full border border-accent-brown/20
+                transition-all duration-500 ease-out
+                ${isActive 
+                  ? "bg-brand-ink text-primary-bg border-brand-ink scale-105" 
+                  : "bg-transparent text-accent-brown hover:border-accent-brown hover:bg-accent-brown/5"
+                }
+              `}
+            >
+              {mood}
+            </button>
+          );
+        })}
+        
+        {/* 'Clear Filter' appears only when active */}
+        <button
+          onClick={() => onMoodSelect("")}
+          className={`
+            font-sans-body text-xs uppercase tracking-wide px-4 py-3 
+            text-accent-brown/50 hover:text-accent-brown underline decoration-1 underline-offset-4
+            transition-opacity duration-500
+            ${activeMood ? "opacity-100 visible" : "opacity-0 invisible"}
+          `}
+        >
+          Reset View
+        </button>
       </div>
     </nav>
   );
