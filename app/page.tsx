@@ -1,11 +1,15 @@
-// app/page.tsx
 import { client } from "@/lib/sanity";
-import CalmEntry from '@/app/components/CalmEntry';
-import MoodFilter from '@/app/components/MoodFilter';
+import CalmEntry from './components/CalmEntry';
+import MoodFilter from './components/MoodFilter';
+import ArtifactButton from './components/ArtifactButton';
 
 async function getMoods() {
-  // This is the "Atmospheric Search" logic bridge [cite: 155]
-  return await client.fetch(`*[_type == "mood"]{title}`);
+  // Safe fetch that works even if backend is empty
+  try {
+    return await client.fetch(`*[_type == "mood"]{title}`);
+  } catch (error) {
+    return [];
+  }
 }
 
 export default async function Home() {
@@ -13,34 +17,57 @@ export default async function Home() {
 
   return (
     <CalmEntry>
-      <section className="text-center mb-16">
-        <p className="font-serif italic text-xl text-stone-600">
-          "The only 5 minutes of calm you need this week." [cite: 11]
+      {/* 1. The Thesis (Centered, Intellectual Context) */}
+      <section className="text-center max-w-2xl mx-auto mb-32">
+        <span className="font-sans-body text-xs text-accent-brown uppercase tracking-widest mb-4 block">
+          The Weekly Ritual | Issue 01
+        </span>
+        <h2 className="font-serif-title text-5xl text-accent-brown mb-8 leading-tight">
+          The Architecture of Silence
+        </h2>
+        <p className="font-serif-title text-xl leading-relaxed text-brand-ink/80">
+          This week we explore how physical spaces can dampen the noise of modern life, 
+          turning the home into a vessel for quietude.
         </p>
       </section>
 
-      {/* This now uses real data from your "Brain" */}
-      <nav className="flex flex-wrap gap-4 border-y border-stone-200 py-6 my-8 justify-center">
-        <span className="text-xs uppercase tracking-widest text-stone-400 w-full text-center mb-2">
-          The Living Atlas: Filter by Mood [cite: 151, 187]
-        </span>
-        {moods.map((mood: any) => (
-          <button key={mood.title} className="font-serif italic text-stone-600 hover:text-stone-900 px-2">
-            {mood.title}
-          </button>
-        ))}
-      </nav>
+      {/* 2. Atmospheric Filter */}
+      <MoodFilter />
 
-      <article className="space-y-8 mt-12">
-        <h2 className="font-serif text-3xl">The Weekly Ritual [cite: 31, 34]</h2>
-        <p className="leading-relaxed text-lg font-light text-stone-700">
-          Welcome to a post-algorithmic alternative. This space is designed to de-fragment 
-          your experience and replace "content soup" with a high-potency signal. [cite: 8, 12]
-        </p>
-        <div className="pt-8">
-          <a href="/atlas" className="border border-stone-800 px-10 py-4 uppercase text-[10px] tracking-[0.3em] hover:bg-stone-900 hover:text-white transition-all duration-700">
-            Explore the Living Atlas [cite: 60]
-          </a>
+      {/* 3. The Signal (Split Layout: Text Left / Image Right) */}
+      <article className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center mt-32 border-t border-secondary-bg pt-24">
+        
+        {/* Left Column: Text & Context */}
+        <div className="space-y-8 order-2 md:order-1">
+          <div className="space-y-2">
+            <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown">
+              II. The Signal
+            </span>
+            <h3 className="font-serif-title text-3xl text-brand-ink">
+              Studio O: Light as Material
+            </h3>
+          </div>
+          
+          <div className="prose prose-lg font-sans-body text-brand-ink/70 leading-relaxed">
+            <p>
+              We profile the Tokyo-based lighting studio that treats light not as utility, 
+              but as a tactile material. Their latest installation uses washi paper 
+              to filter harsh city frequencies into a soft, amber glow.
+            </p>
+          </div>
+
+          {/* The Artifact Card */}
+          <ArtifactButton 
+            title="In Praise of Shadows" 
+            link="https://geniuslink.com/example" 
+          />
+        </div>
+
+        {/* Right Column: Visual Evidence (Museum Quality Image) */}
+        <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden flex items-center justify-center">
+           <span className="text-accent-brown/40 font-serif-title italic">
+             [Signal Hero Image]
+           </span>
         </div>
       </article>
     </CalmEntry>
