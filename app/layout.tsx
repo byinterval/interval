@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google"; 
 import "./globals.css";
+import GlobalNavigation from './components/GlobalNavigation';
 
 // 1. Configure Typography (Proxies for Brown & Atlas Grotesk)
 const serif = Playfair_Display({ 
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${serif.variable} ${sans.variable} bg-primary-bg text-brand-ink antialiased`}>
+        <GlobalNavigation />
         {/* Header: Clean, Minimal, Accent Brown Title */}
         <header className="py-12 px-6 text-center border-b border-secondary-bg/50">
           <h1 className="font-serif-title text-5xl tracking-tight text-accent-brown">
@@ -36,7 +38,7 @@ export default function RootLayout({
         </header>
 
         {/* Main: Generous whitespace (>15%) per UI Strategy */}
-        <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen">
+        <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen pt-32">
           {children}
         </main>
       </body>
