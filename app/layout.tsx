@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google"; 
+import GlobalNavigation from './components/GlobalNavigation'; 
 import "./globals.css";
-import GlobalNavigation from './components/GlobalNavigation';
 
-// 1. Configure Typography (Proxies for Brown & Atlas Grotesk)
+// 1. Configure Typography
 const serif = Playfair_Display({ 
   subsets: ["latin"], 
   variable: '--font-serif',
@@ -29,15 +29,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${serif.variable} ${sans.variable} bg-primary-bg text-brand-ink antialiased`}>
+        
+        {/* Navigation is the only header now */}
         <GlobalNavigation />
-        {/* Header: Clean, Minimal, Accent Brown Title */}
-        <header className="py-12 px-6 text-center border-b border-secondary-bg/50">
-          <h1 className="font-serif-title text-5xl tracking-tight text-accent-brown">
-            The Interval
-          </h1>
-        </header>
 
-        {/* Main: Generous whitespace (>15%) per UI Strategy */}
+        {/* REMOVED: The static <header> block that contained "The Interval" title 
+           has been deleted to prevent overlapping with the sticky navigation.
+        */}
+
+        {/* Padding top (pt-32) ensures content starts below the sticky nav */}
         <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen pt-32">
           {children}
         </main>

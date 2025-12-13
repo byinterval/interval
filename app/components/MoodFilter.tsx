@@ -8,12 +8,14 @@ interface MoodFilterProps {
 
 export default function MoodFilter({ moods, activeMood, onMoodSelect }: MoodFilterProps) {
   return (
-    <nav className="flex flex-col items-center justify-center space-y-6 py-12">
+    // Added 'w-full' to ensure the nav spans the full width
+    <nav className="w-full flex flex-col items-center justify-center space-y-6 py-12">
       <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown/70 transition-opacity duration-500">
         Filter the Archive by Atmospheric Mood
       </span>
       
-      <div className="flex flex-wrap justify-center gap-3 max-w-4xl px-6">
+      {/* Added 'w-full' and 'mx-auto' to strictly center the container */}
+      <div className="flex flex-wrap justify-center gap-3 max-w-4xl w-full mx-auto px-6">
         {moods.map((mood) => {
           const isActive = activeMood === mood;
           
@@ -36,7 +38,7 @@ export default function MoodFilter({ moods, activeMood, onMoodSelect }: MoodFilt
           );
         })}
         
-        {/* 'Clear Filter' appears only when active */}
+        {/* Reset Button */}
         <button
           onClick={() => onMoodSelect("")}
           className={`
