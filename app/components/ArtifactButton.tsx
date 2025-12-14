@@ -12,6 +12,7 @@ export default function ArtifactButton({ link, title }: { link: string, title: s
         <span className="block font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown mb-3">
           Ritual Object
         </span>
+        {/* Fixed Text Color: brand-ink (Dark) instead of conditional white */}
         <h4 className="font-serif-title text-xl text-brand-ink mb-4 group-hover:text-accent-brown transition-colors">
           {title}
         </h4>

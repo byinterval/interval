@@ -9,7 +9,8 @@ import ArtifactVault from '../components/ArtifactVault';
 import MasonryGrid from '../components/MasonryGrid';
 import CalmGridItem from '../components/CalmGridItem';
 
-const query = `*[_type == "issue"] {
+// Updated Query: Handles missing images/moods gracefully
+const query = `*[_type == "issue"] | order(issueNumber desc) {
   "id": _id,
   "studio": signalStudio,
   "title": signalContext, 
@@ -21,17 +22,17 @@ export default function AtlasPage() {
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [signals, setSignals] = useState<any[]>([]);
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Add Loading State
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Parallel Fetching
     Promise.all([
       client.fetch(query),
       client.fetch(`*[_type == "mood"]{title}`)
     ]).then(([signalData, moodData]) => {
+      console.log("Atlas Data:", signalData); // Debug log
       setSignals(signalData);
       setAvailableMoods(moodData.map((m: any) => m.title));
-      setIsLoading(false); // Stop loading
+      setIsLoading(false);
     }).catch(err => {
       console.error("Atlas Fetch Error", err);
       setIsLoading(false);
@@ -72,30 +73,21 @@ export default function AtlasPage() {
                {filteredSignals.map((signal) => (
                  <CalmGridItem key={signal.id}>
                    <SignalCard 
-                     studio={signal.studio || "Unknown Studio"}
-                     title={signal.title || ""}
-                     mood={signal.mood || "Untagged"}
-                     image={signal.image || ""}
+                     studio={signal.studio || "Studio"}
+                     title={signal.title || "No description"}
+                     mood={signal.mood || "General"}
+                     image={signal.image || ""} // Falls back to placeholder in component
                      heightClass="aspect-[3/4]"
                    />
                  </CalmGridItem>
                ))}
              </AnimatePresence>
              
-             {/* Improved Empty State Logic */}
              {!isLoading && filteredSignals.length === 0 && (
                <div className="col-span-full py-32 text-center">
                  <p className="font-serif-title text-2xl text-accent-brown/50 italic">
                    {signals.length === 0 ? "Archive is empty." : "No signals found for this mood."}
                  </p>
-               </div>
-             )}
-             
-             {isLoading && (
-               <div className="col-span-full py-32 text-center">
-                  <span className="font-sans-body text-xs uppercase tracking-widest animate-pulse">
-                    Loading Archive...
-                  </span>
                </div>
              )}
            </MasonryGrid>

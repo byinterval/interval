@@ -4,32 +4,29 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SearchOverlay from './SearchOverlay';
 import DotMenu from './DotMenu';
-import { client } from '@/lib/sanity'; // Import Sanity Client
+import { client } from '@/lib/sanity';
 
 export default function GlobalNavigation() {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  
-  // NEW: State to hold the live issue data
-  const [latestIssue, setLatestIssue] = useState<{ issueNumber: string; title: string } | null>(null);
+  const [latestIssue, setLatestIssue] = useState<any>(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     
-    // NEW: Fetch latest issue title for the Nav Bar
-    // Query explanation: Get all issues, sort by number descending, take the first one.
+    // Fetch latest issue with a GROQ query that ensures we get the newest one
     const navQuery = `*[_type == "issue"] | order(issueNumber desc)[0]{
       issueNumber, 
-      title
+      title,
+      publishedAt
     }`;
 
     client.fetch(navQuery)
       .then(data => {
-        if (data) {
-          setLatestIssue(data);
-        }
+        console.log("Nav Data:", data); // Debugging
+        if (data) setLatestIssue(data);
       })
       .catch(err => console.error("Nav Fetch Error", err));
 
@@ -56,15 +53,17 @@ export default function GlobalNavigation() {
             </Link>
             
             {/* Dynamic Issue Indicator */}
-            <div className="hidden md:flex items-center space-x-2 font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              {/* Uses live data or falls back to '00' while loading */}
-              <span>No. {latestIssue?.issueNumber || "00"}</span>
-              <span className="opacity-50">|</span>
-              <span className="opacity-70 truncate max-w-[200px]">
-                {latestIssue?.title || "Loading..."}
-              </span>
-            </div>
+            {latestIssue && (
+              <div className="hidden md:flex items-center space-x-2 font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">
+                {/* Pulse Logic: Always pulses for the latest issue */}
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                <span>No. {latestIssue.issueNumber}</span>
+                <span className="opacity-50">|</span>
+                <span className="opacity-70 truncate max-w-[200px]">
+                  {latestIssue.title}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* ZONE 2: MODE SWITCH */}
