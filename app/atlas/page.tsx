@@ -9,13 +9,13 @@ import ArtifactVault from '../components/ArtifactVault';
 import MasonryGrid from '../components/MasonryGrid';
 import CalmGridItem from '../components/CalmGridItem';
 
-// Updated Query: Handles missing images/moods gracefully
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   "id": _id,
   "studio": signalStudio,
   "title": signalContext, 
   "mood": moodTags[0]->title, 
-  "image": signalImages[0].asset->url
+  "image": signalImages[0].asset->url,
+  "material": signalMaterial // Added material for filtering if needed later
 }`;
 
 export default function AtlasPage() {
@@ -27,11 +27,16 @@ export default function AtlasPage() {
   useEffect(() => {
     Promise.all([
       client.fetch(query),
-      client.fetch(`*[_type == "mood"]{title}`)
+      client.fetch(`*[_type == "mood"] | order(title asc) {title}`) // Fetch moods
     ]).then(([signalData, moodData]) => {
-      console.log("Atlas Data:", signalData); // Debug log
+      console.log("Signal Data:", signalData);
+      console.log("Mood Data:", moodData);
+      
       setSignals(signalData);
-      setAvailableMoods(moodData.map((m: any) => m.title));
+      // Ensure we map correctly: moodData is an array of objects {title: "Rain"}
+      const moodStrings = moodData.map((m: any) => m.title).filter(Boolean); 
+      setAvailableMoods(moodStrings);
+      
       setIsLoading(false);
     }).catch(err => {
       console.error("Atlas Fetch Error", err);
@@ -59,7 +64,13 @@ export default function AtlasPage() {
           </h1>
         </header>
 
+        {/* Sticky Filter Container */}
         <div className="sticky top-0 z-40 bg-primary-bg/95 backdrop-blur-md border-b border-accent-brown/5 transition-all">
+          {/* Debugging: If no moods, show a message locally to confirm */}
+          {availableMoods.length === 0 && !isLoading && (
+             <div className="text-center py-4 text-xs text-red-500 hidden">No moods found in Sanity.</div>
+          )}
+          
           <MoodFilter 
             moods={availableMoods} 
             activeMood={activeMood}
@@ -76,7 +87,7 @@ export default function AtlasPage() {
                      studio={signal.studio || "Studio"}
                      title={signal.title || "No description"}
                      mood={signal.mood || "General"}
-                     image={signal.image || ""} // Falls back to placeholder in component
+                     image={signal.image || ""} 
                      heightClass="aspect-[3/4]"
                    />
                  </CalmGridItem>
