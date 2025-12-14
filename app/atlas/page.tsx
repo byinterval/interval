@@ -9,13 +9,13 @@ import ArtifactVault from '../components/ArtifactVault';
 import MasonryGrid from '../components/MasonryGrid';
 import CalmGridItem from '../components/CalmGridItem';
 
-// Updated Query: Handles missing images/moods gracefully
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   "id": _id,
   "studio": signalStudio,
   "title": signalContext, 
   "mood": moodTags[0]->title, 
-  "image": signalImages[0].asset->url
+  "image": signalImages[0].asset->url,
+  "material": signalMaterial
 }`;
 
 export default function AtlasPage() {
@@ -23,28 +23,44 @@ export default function AtlasPage() {
   const [signals, setSignals] = useState<any[]>([]);
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      client.fetch(query),
-      // Fetch ALL moods, not just those attached to issues, to populate the filter
-      client.fetch(`*[_type == "mood"]{title}`)
-    ]).then(([signalData, moodData]) => {
-      console.log("Atlas Signal Data:", signalData); 
-      console.log("Atlas Raw Mood Data:", moodData); // Debugging
-      
-      setSignals(signalData);
-      
-      // Ensure we map the array of objects [{title: "Rain"}] to an array of strings ["Rain"]
-      const moodStrings = moodData.map((m: any) => m.title).filter(Boolean);
-      console.log("Atlas Processed Mood Strings:", moodStrings); // Debugging
-      
-      setAvailableMoods(moodStrings);
-      setIsLoading(false);
-    }).catch(err => {
-      console.error("Atlas Fetch Error", err);
-      setIsLoading(false);
-    });
+    const fetchData = async () => {
+      try {
+        console.log("Atlas: Starting Data Fetch...");
+        
+        const [signalData, moodData] = await Promise.all([
+          client.fetch(query),
+          client.fetch(`*[_type == "mood"] | order(title asc) {title}`)
+        ]);
+
+        console.log("Atlas: Signals Fetched:", signalData);
+        console.log("Atlas: Moods Fetched:", moodData);
+
+        if (!moodData || moodData.length === 0) {
+          console.warn("Atlas: No moods returned from Sanity!");
+        }
+
+        setSignals(signalData);
+        
+        // Robust mapping: handle nulls/undefined safely
+        const moodStrings = moodData
+          .map((m: any) => m.title)
+          .filter((t: any) => typeof t === 'string' && t.length > 0);
+          
+        console.log("Atlas: Final Mood Strings:", moodStrings);
+        setAvailableMoods(moodStrings);
+        setIsLoading(false);
+
+      } catch (err: any) {
+        console.error("Atlas Fetch Error:", err);
+        setError(err.message || "Failed to load Atlas data.");
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const filteredSignals = activeMood 
@@ -54,6 +70,14 @@ export default function AtlasPage() {
   const handleMoodSelect = (mood: string) => {
     setActiveMood(prev => (prev === mood ? null : mood));
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500 font-sans-body">
+        Error loading Atlas: {error}
+      </div>
+    );
+  }
 
   return (
     <CalmEntry>
@@ -84,7 +108,7 @@ export default function AtlasPage() {
                      studio={signal.studio || "Studio"}
                      title={signal.title || "No description"}
                      mood={signal.mood || "General"}
-                     image={signal.image || ""} // Falls back to placeholder in component
+                     image={signal.image || ""} 
                      heightClass="aspect-[3/4]"
                    />
                  </CalmGridItem>

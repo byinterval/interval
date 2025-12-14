@@ -7,11 +7,8 @@ interface MoodFilterProps {
 }
 
 export default function MoodFilter({ moods, activeMood, onMoodSelect }: MoodFilterProps) {
-  // Guard clause: If moods is undefined or null, fallback to empty array to prevent crash
+  // Guard clause: If moods is undefined or null, fallback to empty array
   const safeMoods = moods || [];
-
-  // DEBUG: Log the received moods to the console to verify data flow
-  console.log("MoodFilter Rendered. Received moods:", safeMoods);
 
   return (
     <nav className="w-full flex flex-col items-center justify-center space-y-6 py-12">
