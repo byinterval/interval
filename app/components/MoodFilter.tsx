@@ -10,6 +10,9 @@ export default function MoodFilter({ moods, activeMood, onMoodSelect }: MoodFilt
   // Guard clause: If moods is undefined or null, fallback to empty array to prevent crash
   const safeMoods = moods || [];
 
+  // DEBUG: Log the received moods to the console to verify data flow
+  console.log("MoodFilter Rendered. Received moods:", safeMoods);
+
   return (
     <nav className="w-full flex flex-col items-center justify-center space-y-6 py-12">
       <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown/70 transition-opacity duration-500">
