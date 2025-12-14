@@ -1,11 +1,11 @@
 import { client } from "@/lib/sanity";
 import CalmEntry from './components/CalmEntry';
-import MoodFilter from './components/MoodFilter';
+import MoodFilter from './components/MoodFilter'; // Assuming this uses the client wrapper or is adapted
+import HomepageFilter from './components/HomepageFilter'; // Use the wrapper if you created it
 import ArtifactButton from './components/ArtifactButton';
 import Image from "next/image";
 
-// 1. The GROQ Query (The "Live Wire")
-// Fetches the latest issue by sorting issueNumber descending and taking the first one [0]
+// 1. The GROQ Query
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
   title,
@@ -22,32 +22,36 @@ const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   "moods": moodTags[]->title
 }`;
 
-// 2. Data Fetching Function
+// 2. Data Fetching
 async function getLatestIssue() {
-  const data = await client.fetch(query, {}, { cache: 'no-store' }); // no-store ensures fresh data
-  return data;
-}
-
-async function getMoods() {
-  return await client.fetch(`*[_type == "mood"]{title}`);
+  try {
+    const data = await client.fetch(query, {}, { cache: 'no-store' });
+    return data;
+  } catch (error) {
+    console.error("Sanity Fetch Error:", error);
+    return null;
+  }
 }
 
 export default async function Home() {
   const issue = await getLatestIssue();
-  const moods = await getMoods();
 
-  // Fallback if no issue is published yet
+  // FIX: Robust Null Check to prevent Server Crash
   if (!issue) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-primary-bg text-accent-brown">
-        <p className="font-serif-title text-xl">Sanctuary is preparing the first issue...</p>
-      </div>
+      <main className="min-h-screen flex flex-col items-center justify-center bg-primary-bg text-brand-ink p-6 text-center">
+        <h1 className="font-serif-title text-4xl mb-4">The Interval</h1>
+        <p className="font-sans-body text-accent-brown">
+          Sanctuary is preparing the first issue...
+        </p>
+        <p className="text-xs mt-4 opacity-50">Status: Waiting for published content in Sanity.</p>
+      </main>
     );
   }
 
   return (
     <CalmEntry>
-      {/* 1. The Thesis (Fetched from Sanity) */}
+      {/* 1. The Thesis */}
       <section className="text-center max-w-2xl mx-auto mb-32">
         <span className="font-sans-body text-xs text-accent-brown uppercase tracking-widest mb-4 block">
           The Weekly Ritual | Issue {issue.issueNumber}
@@ -60,21 +64,21 @@ export default async function Home() {
         </p>
       </section>
 
-      {/* 2. Atmospheric Filter (Live Moods) */}
-      {/* We map the mood objects to simple strings for the filter */}
-      <MoodFilter moods={moods.map((m: any) => m.title)} activeMood={null} onMoodSelect={() => {}} />
+      {/* 2. Atmospheric Filter */}
+      {/* Using the wrapper to handle client-side state in a server component */}
+      <HomepageFilter />
 
-      {/* 3. The Signal (Fetched from Sanity) */}
+      {/* 3. The Signal */}
       <article className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center mt-32 border-t border-secondary-bg pt-24">
         
-        {/* Left Column: Text & Context */}
+        {/* Left Column */}
         <div className="space-y-8 order-2 md:order-1">
           <div className="space-y-2">
             <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown">
               II. The Signal
             </span>
             <h3 className="font-serif-title text-3xl text-brand-ink">
-              {issue.signalStudio}
+              {issue.signalStudio || "Studio Profile"}
             </h3>
           </div>
           
@@ -89,7 +93,7 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* The Artifact Card (Linked from Sanity) */}
+          {/* Artifact Card */}
           {issue.artifact && (
             <ArtifactButton 
               title={issue.artifact.title} 
@@ -98,7 +102,7 @@ export default async function Home() {
           )}
         </div>
 
-        {/* Right Column: Visual Evidence */}
+        {/* Right Column */}
         <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden">
            {issue.signalImage ? (
              <Image 
