@@ -9,13 +9,13 @@ import ArtifactVault from '../components/ArtifactVault';
 import MasonryGrid from '../components/MasonryGrid';
 import CalmGridItem from '../components/CalmGridItem';
 
+// Updated Query: Handles missing images/moods gracefully
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   "id": _id,
   "studio": signalStudio,
   "title": signalContext, 
   "mood": moodTags[0]->title, 
-  "image": signalImages[0].asset->url,
-  "material": signalMaterial // Added material for filtering if needed later
+  "image": signalImages[0].asset->url
 }`;
 
 export default function AtlasPage() {
@@ -27,16 +27,19 @@ export default function AtlasPage() {
   useEffect(() => {
     Promise.all([
       client.fetch(query),
-      client.fetch(`*[_type == "mood"] | order(title asc) {title}`) // Fetch moods
+      // Fetch ALL moods, not just those attached to issues, to populate the filter
+      client.fetch(`*[_type == "mood"]{title}`)
     ]).then(([signalData, moodData]) => {
-      console.log("Signal Data:", signalData);
-      console.log("Mood Data:", moodData);
+      console.log("Atlas Signal Data:", signalData); 
+      console.log("Atlas Raw Mood Data:", moodData); // Debugging
       
       setSignals(signalData);
-      // Ensure we map correctly: moodData is an array of objects {title: "Rain"}
-      const moodStrings = moodData.map((m: any) => m.title).filter(Boolean); 
-      setAvailableMoods(moodStrings);
       
+      // Ensure we map the array of objects [{title: "Rain"}] to an array of strings ["Rain"]
+      const moodStrings = moodData.map((m: any) => m.title).filter(Boolean);
+      console.log("Atlas Processed Mood Strings:", moodStrings); // Debugging
+      
+      setAvailableMoods(moodStrings);
       setIsLoading(false);
     }).catch(err => {
       console.error("Atlas Fetch Error", err);
@@ -64,13 +67,7 @@ export default function AtlasPage() {
           </h1>
         </header>
 
-        {/* Sticky Filter Container */}
         <div className="sticky top-0 z-40 bg-primary-bg/95 backdrop-blur-md border-b border-accent-brown/5 transition-all">
-          {/* Debugging: If no moods, show a message locally to confirm */}
-          {availableMoods.length === 0 && !isLoading && (
-             <div className="text-center py-4 text-xs text-red-500 hidden">No moods found in Sanity.</div>
-          )}
-          
           <MoodFilter 
             moods={availableMoods} 
             activeMood={activeMood}
@@ -87,7 +84,7 @@ export default function AtlasPage() {
                      studio={signal.studio || "Studio"}
                      title={signal.title || "No description"}
                      mood={signal.mood || "General"}
-                     image={signal.image || ""} 
+                     image={signal.image || ""} // Falls back to placeholder in component
                      heightClass="aspect-[3/4]"
                    />
                  </CalmGridItem>
