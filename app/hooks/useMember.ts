@@ -11,27 +11,30 @@ export function useMember() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for Memberful data on the window or cookies
-    // Note: Memberful.js handles the overlay, but actual auth state is usually 
-    // verified via a server-side cookie/token exchange in a real app.
-    // For this frontend-only check, we look for the Memberful cookie or specific query params.
-    
-    // Simplistic check: If Memberful cookie exists (this is a heuristic)
+    // Check for Memberful cookie as a proxy for logged-in state
     const hasCookie = document.cookie.includes('memberful_session');
     
     if (hasCookie) {
-      // In a real implementation, you would fetch the actual member data 
-      // from your own API endpoint that verifies the Memberful token.
-      // For now, we simulate a logged-in user if the cookie is present.
       setMember({
-        id: "mock-member-id", // Replace with real ID fetching logic later
-        email: "member@example.com",
+        id: "current-member-id", 
+        // In a real app, you'd fetch the real email from an API endpoint
+        email: "member@theinterval.com", 
         isActive: true
       });
     }
-    
     setIsLoading(false);
   }, []);
+
+  // Helper to safely call Memberful window object
+  const safeMemberfulAction = (action: (m: any) => void) => {
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.Memberful) {
+      // @ts-ignore
+      action(window.Memberful);
+    } else {
+      console.warn("Memberful script not loaded");
+    }
+  };
 
   return {
     id: member?.id,
@@ -39,15 +42,14 @@ export function useMember() {
     email: member?.email,
     isLoading,
     isActive: member?.isActive,
-    // Helper to trigger login
-    login: () => {
-        // @ts-ignore
-        if (window.Memberful) {
-            // @ts-ignore
-            window.Memberful.openOverlay();
-        } else {
-            window.location.href = "https://theinterval.memberful.com/join";
-        }
-    }
+    
+    // Actions
+    login: () => safeMemberfulAction((m) => m.openOverlay()),
+    logout: () => {
+      safeMemberfulAction((m) => m.signout());
+      window.location.href = "/"; // Redirect home after logout
+    },
+    openBilling: () => safeMemberfulAction((m) => m.openUpdateCard()),
+    openSubscriptions: () => safeMemberfulAction((m) => m.openSubscriptions()),
   };
 }
