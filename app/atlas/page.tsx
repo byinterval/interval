@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { client } from '@/lib/sanity';
-// FIX: Using Absolute Imports to bypass relative path errors
 import CalmEntry from '@/app/components/CalmEntry';
 import MoodFilter from '@/app/components/MoodFilter';
 import SignalCard from '@/app/components/SignalCard';
