@@ -47,11 +47,26 @@ export default function SignalCard({
         {/* Scrim Overlay */}
         <div className="absolute inset-0 bg-brand-ink/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out z-10 flex flex-col justify-end p-6">
             
-            {/* LOCKED STATE TOOLTIP */}
+            {/* LOCKED STATE - "Classified Document" Style */}
             {isLocked ? (
-               <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-[#1A1A1A] text-[#FDFBF7] px-4 py-2 text-[10px] uppercase tracking-widest shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                     Member Access Required
+               <div className="absolute bottom-0 left-0 w-full p-6">
+                  {/* Redacted Studio Name */}
+                  <div className="w-2/3 h-6 bg-primary-bg/20 backdrop-blur-md mb-2 rounded-sm" />
+                  
+                  {/* Redacted Context Text */}
+                  <div className="space-y-1">
+                    <div className="w-full h-3 bg-primary-bg/10 backdrop-blur-md rounded-sm" />
+                    <div className="w-5/6 h-3 bg-primary-bg/10 backdrop-blur-md rounded-sm" />
+                  </div>
+
+                  {/* Tooltip on Hover */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 -translate-y-12">
+                      <div className="bg-[#1A1A1A] text-[#FDFBF7] px-3 py-2 text-[9px] uppercase tracking-widest shadow-xl flex items-center gap-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+                           <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
+                         </svg>
+                         Member Access Required
+                      </div>
                   </div>
                </div>
             ) : (

@@ -100,6 +100,10 @@ export default function AtlasPage() {
     ? signals.filter(s => s.mood === activeMood)
     : signals;
 
+  // Filter artifacts based on issues that match the mood (approximate logic for demo)
+  // In a real app, artifacts would be tagged with moods too.
+  const artifactCount = activeMood ? Math.floor(filteredSignals.length / 2) : artifacts.length;
+
   const handleMoodSelect = (mood: string) => {
     // Allows selection even if not authenticated to trigger "Demo Mode" view
     setActiveMood(prev => (prev === mood ? null : mood));
@@ -117,6 +121,7 @@ export default function AtlasPage() {
           </h1>
         </header>
 
+        {/* SEARCH BAR (Always Visible) */}
         <div className="sticky top-0 z-40 bg-primary-bg/95 backdrop-blur-md border-b border-accent-brown/5 transition-all">
           <MoodFilter 
             moods={availableMoods} 
@@ -125,7 +130,7 @@ export default function AtlasPage() {
           />
         </div>
 
-        {/* THE DEMO BLOCKER - UPDATED LOGIC */}
+        {/* THE DEMO BLOCKER */}
         {/* If user selects a mood AND is not authenticated, show the grid underneath but block interaction */}
         {activeMood && !isAuthenticated && (
             <>
@@ -147,7 +152,7 @@ export default function AtlasPage() {
                         </p>
                         
                         <h3 className="font-serif-title text-3xl text-brand-ink mb-4 leading-tight">
-                            {filteredSignals.length} Signals found for <br/>
+                            {filteredSignals.length} Signals and {artifactCount} Artifacts curated for <br/>
                             <span className="italic text-accent-brown">'{activeMood}'</span>
                         </h3>
                         
@@ -160,7 +165,7 @@ export default function AtlasPage() {
                                 href="/signup"
                                 className="block w-full bg-brand-ink text-primary-bg py-4 font-sans-body text-xs uppercase tracking-widest hover:bg-accent-brown transition-colors"
                             >
-                                Unlock the Archive (£8/mo)
+                                Unlock the Archive
                             </Link>
                             <button 
                                 onClick={() => setActiveMood(null)}
