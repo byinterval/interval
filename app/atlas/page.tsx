@@ -10,7 +10,7 @@ import ArtifactVault from '@/app/components/ArtifactVault';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
 
-// Query raw image objects (signalImages, coverImage) instead of ->url strings
+// Query raw image objects
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   _id,
   signalStudio,
@@ -38,15 +38,26 @@ export default function AtlasPage() {
 
         const processedSignals = signalData.map((s: any) => {
           // Resolve Image URL safely
-          // Check if signalImages is an array and has items, otherwise use coverImage
-          const rawImage = (Array.isArray(s.signalImages) && s.signalImages.length > 0) 
-            ? s.signalImages[0] 
-            : s.coverImage;
-            
-          // Only generate URL if we have a valid image object with an asset
-          const imageUrl = (rawImage && rawImage.asset) 
-            ? urlFor(rawImage).width(800).url() 
-            : null;
+          let rawImage = null;
+
+          // Priority 1: First signal image
+          if (s.signalImages && Array.isArray(s.signalImages) && s.signalImages.length > 0) {
+            rawImage = s.signalImages[0];
+          } 
+          // Priority 2: Cover image
+          else if (s.coverImage) {
+            rawImage = s.coverImage;
+          }
+
+          // Generate URL only if we have a valid source
+          let imageUrl = null;
+          if (rawImage) {
+            try {
+              imageUrl = urlFor(rawImage).width(800).url();
+            } catch (e) {
+              console.error("Error generating URL for image:", rawImage, e);
+            }
+          }
 
           return {
             id: s._id,
@@ -86,7 +97,6 @@ export default function AtlasPage() {
   };
 
   if (error) {
-    // ... (Keep existing error UI) ...
     return <div className="p-10 text-center text-red-500">{error}</div>;
   }
 
