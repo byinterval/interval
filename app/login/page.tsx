@@ -59,10 +59,7 @@ export default function LoginPage() {
       
       {/* ZONE A: THE KEY (Utility) */}
       <div className="w-full md:w-1/2 flex flex-col justify-center px-8 md:px-24 relative z-10 bg-primary-bg">
-        <Link href="/" className="absolute top-8 left-8 md:left-12 font-serif-title text-xl text-brand-ink">
-          The Interval
-        </Link>
-
+        
         <CalmEntry>
           <div className="max-w-md w-full mx-auto">
             <span className="font-sans-body text-xs text-accent-brown uppercase tracking-widest mb-4 block">
