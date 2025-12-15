@@ -3,17 +3,19 @@ import CalmEntry from './components/CalmEntry';
 import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
 import IssueHero from './components/IssueHero'; 
-import SanityImage from './components/SanityImage'; // NEW IMPORT
+import SanityImage from './components/SanityImage';
+import Image from "next/image";
 
+// QUERY UPDATE: Use 'coalesce' to find the first non-null image URL directly in GROQ
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
   title,
-  "coverImage": coverImage.asset->url,
+  "heroImage": coalesce(coverImage.asset->url, signalImages[0].asset->url),
   thesisBody,
   signalStudio,
   signalContext,
   signalMethod,
-  "signalImage": signalImages[0].asset->url,
+  "signalImage": coalesce(signalImages[0].asset->url, coverImage.asset->url),
   "artifact": linkedArtifact->{
     title,
     "link": link
@@ -23,7 +25,8 @@ const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
 
 async function getLatestIssue() {
   try {
-    return await client.fetch(query, {}, { cache: 'no-store' });
+    const data = await client.fetch(query, {}, { cache: 'no-store' });
+    return data;
   } catch (error) {
     console.error("Sanity Fetch Error:", error);
     return null;
@@ -45,12 +48,12 @@ export default async function Home() {
   return (
     <CalmEntry>
       {/* 1. HERO HEADER */}
-      {/* We use negative margin (-mt-32) to pull it up behind the transparent nav */}
       <div className="-mt-32 mb-20">
         <IssueHero 
           issueNumber={issue.issueNumber}
           title={issue.title}
-          imageSrc={issue.coverImage}
+          // Pass the resolved 'heroImage' from the query
+          imageSrc={issue.heroImage}
         />
       </div>
 
@@ -98,9 +101,9 @@ export default async function Home() {
         </div>
 
         <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden">
-           {/* Fallback to Cover Image if Signal Image is missing */}
+           {/* Use the resolved signalImage directly */}
            <SanityImage 
-             src={issue.signalImage || issue.coverImage} 
+             src={issue.signalImage} 
              alt={issue.signalStudio || "Signal Image"}
              fill
              className="object-cover"
