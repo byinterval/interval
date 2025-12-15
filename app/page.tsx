@@ -1,5 +1,5 @@
 import { client } from "@/lib/sanity";
-import CalmEntry from './components/CalmEntry';
+import CalmEntry from './components/CalmEntry_temp';
 import MoodFilter from './components/MoodFilter'; // Assuming this uses the client wrapper or is adapted
 import HomepageFilter from './components/HomepageFilter'; // Use the wrapper if you created it
 import ArtifactButton from './components/ArtifactButton';

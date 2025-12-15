@@ -1,5 +1,5 @@
 // app/subscribe/last-chance/page.tsx
-import CalmEntry from '@/app/components/CalmEntry';
+import CalmEntry from '@/app/components/CalmEntry_temp';
 import { Playfair_Display } from 'next/font/google';
 
 const serif = Playfair_Display({ subsets: ['latin'] });

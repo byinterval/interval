@@ -1,7 +1,7 @@
 'use client';
 import Image from 'next/image';
 import AudioPrompt from './AudioPrompt';
-import CalmEntry from './CalmEntry';
+import CalmEntry from './CalmEntry_temp';
 
 interface HeroProps {
   issueNumber: string;

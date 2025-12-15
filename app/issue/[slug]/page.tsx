@@ -3,7 +3,7 @@ import IssueHero from '../../components/IssueHero';
 import ThesisModule from '../../components/ThesisModule';
 import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
-import CalmEntry from '../../components/CalmEntry';
+import CalmEntry from '../../components/CalmEntry_temp';
 
 // 1. Define the shape of your CMS data (The Interface)
 interface IssueData {
