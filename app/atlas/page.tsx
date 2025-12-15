@@ -3,14 +3,16 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { client } from '@/lib/sanity';
 import { urlFor } from '@/lib/image'; 
+import { useMember } from '@/app/hooks/useMember'; // Auth Hook
 import CalmEntry from '@/app/components/CalmEntry';
 import MoodFilter from '@/app/components/MoodFilter';
 import SignalCard from '@/app/components/SignalCard';
 import ArtifactVault from '@/app/components/ArtifactVault';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
+import Link from 'next/link';
 
-// QUERY UPDATE: We must fetch the 'image' field inside the artifact reference
+// Query to fetch all necessary data
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   _id,
   signalStudio,
@@ -24,7 +26,7 @@ const query = `*[_type == "issue"] | order(issueNumber desc) {
     title,
     category,
     "link": link,
-    image // <--- This is critical for the visual
+    image 
   }
 }`;
 
@@ -34,7 +36,8 @@ export default function AtlasPage() {
   const [artifacts, setArtifacts] = useState<any[]>([]);
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  const { isAuthenticated } = useMember(); // Check Auth
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,7 +74,6 @@ export default function AtlasPage() {
           };
         });
 
-        // Map Artifacts and ensure we don't have duplicates or nulls
         const processedArtifacts = issueData
           .map((s: any) => s.artifact)
           .filter((a: any) => a !== null);
@@ -88,11 +90,9 @@ export default function AtlasPage() {
 
       } catch (err: any) {
         console.error("Atlas Fetch Error:", err);
-        setError(err.message || "Failed to load Atlas data.");
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -101,14 +101,13 @@ export default function AtlasPage() {
     : signals;
 
   const handleMoodSelect = (mood: string) => {
+    // Allows selection even if not authenticated to trigger "Demo Mode" view
     setActiveMood(prev => (prev === mood ? null : mood));
   };
 
-  if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
-
   return (
     <CalmEntry>
-      <main className="min-h-screen bg-primary-bg">
+      <main className="min-h-screen bg-primary-bg relative">
         <header className="pt-32 pb-16 text-center px-6">
           <span className="font-sans-body text-xs text-accent-brown uppercase tracking-[0.2em] mb-6 block">
             The Digital Archive
@@ -126,12 +125,63 @@ export default function AtlasPage() {
           />
         </div>
 
-        <section className="py-20 min-h-[60vh]">
+        {/* THE DEMO BLOCKER - UPDATED LOGIC */}
+        {/* If user selects a mood AND is not authenticated, show the grid underneath but block interaction */}
+        {activeMood && !isAuthenticated && (
+            <>
+                {/* 1. The Overlay Barrier */}
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-auto">
+                    {/* Backdrop Blur to obscure detail but show volume */}
+                    <div className="absolute inset-0 bg-primary-bg/60 backdrop-blur-sm" onClick={() => setActiveMood(null)} />
+                    
+                    {/* The Lock Card */}
+                    <div className="relative max-w-md w-full bg-white border border-accent-brown/20 p-12 text-center shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+                        <span className="inline-block mb-6 p-3 rounded-full bg-accent-brown/5 text-accent-brown">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                                <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
+                            </svg>
+                        </span>
+                        
+                        <p className="font-sans-body text-xs text-accent-brown uppercase tracking-widest mb-2">
+                            Search Results Locked
+                        </p>
+                        
+                        <h3 className="font-serif-title text-3xl text-brand-ink mb-4 leading-tight">
+                            {filteredSignals.length} Signals found for <br/>
+                            <span className="italic text-accent-brown">'{activeMood}'</span>
+                        </h3>
+                        
+                        <p className="font-sans-body text-sm text-brand-ink/60 mb-8 leading-relaxed">
+                            This taxonomy and the curated artifacts within it are reserved for Founding Members.
+                        </p>
+                        
+                        <div className="space-y-4">
+                            <Link 
+                                href="/signup"
+                                className="block w-full bg-brand-ink text-primary-bg py-4 font-sans-body text-xs uppercase tracking-widest hover:bg-accent-brown transition-colors"
+                            >
+                                Unlock the Archive (£8/mo)
+                            </Link>
+                            <button 
+                                onClick={() => setActiveMood(null)}
+                                className="text-xs text-brand-ink/40 hover:text-brand-ink uppercase tracking-widest border-b border-transparent hover:border-brand-ink pb-0.5 transition-colors"
+                            >
+                                Close Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </>
+        )}
+
+        {/* 2. The Grid (Rendered but unreachable if locked) */}
+        <section className={`py-20 min-h-[60vh] transition-all duration-500 ${activeMood && !isAuthenticated ? 'opacity-40 pointer-events-none filter blur-[2px]' : ''}`}>
            <MasonryGrid>
              <AnimatePresence mode='popLayout'>
                {filteredSignals.map((signal) => (
                  <CalmGridItem key={signal.id}>
                    <SignalCard 
+                     id={signal.id} 
                      studio={signal.studio || "Studio"}
                      title={signal.title || "No description"}
                      mood={signal.mood || "General"}
@@ -141,15 +191,11 @@ export default function AtlasPage() {
                  </CalmGridItem>
                ))}
              </AnimatePresence>
-             {!isLoading && filteredSignals.length === 0 && (
-               <div className="col-span-full py-32 text-center text-accent-brown/50">
-                 No signals found.
-               </div>
-             )}
+             {/* ... empty state logic ... */}
            </MasonryGrid>
         </section>
 
-        <div className="border-t border-accent-brown/10">
+        <div className={`border-t border-accent-brown/10 transition-opacity duration-500 ${activeMood && !isAuthenticated ? 'opacity-20' : ''}`}>
           <ArtifactVault artifacts={artifacts} />
         </div>
       </main>
