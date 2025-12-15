@@ -11,23 +11,15 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'magic' | 'code'>('magic');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   
-  const { login } = useMember(); // We'll expand this hook logic below
+  const { login } = useMember(); 
 
   // Handle Magic Link Submission
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('loading');
     
-    // In a real implementation with Memberful.js, you usually trigger the overlay 
-    // or redirect to a hosted auth link. Since we want a custom UI, we might 
-    // need to rely on the Memberful redirect flow or a custom API wrapper if available.
-    // For this "Threshold" UI, we'll simulate the "Sent" state or redirect.
-    
-    // Memberful Magic Link Redirect Pattern:
-    // https://YOURSITE.memberful.com/auth/sign_in?email=USER_EMAIL
-    
+    // Simulate API delay for "Calm" feeling
     setTimeout(() => {
-      // Simulate API delay for "Calm" feeling
       setStatus('success'); 
       // In production: window.location.href = `https://YOUR_SUBDOMAIN.memberful.com/auth/sign_in?email=${email}`;
     }, 1500);
@@ -145,14 +137,14 @@ export default function LoginPage() {
       </div>
 
       {/* ZONE B: THE MOOD (Atmosphere) */}
-      <div className="hidden md:block w-1/2 relative bg-secondary-bg overflow-hidden">
-        {/* Placeholder for Dynamic Atmospheric Image */}
+      <div className="hidden md:block w-1/2 relative bg-secondary-bg overflow-hidden h-screen sticky top-0">
         <div className="absolute inset-0">
            <Image 
-             src="https://images.unsplash.com/photo-1493723843689-d205189326e5?q=80&w=2000" // Replace with dynamic prop
+             src="https://images.unsplash.com/photo-1493723843689-d205189326e5?q=80&w=2000" 
              alt="Atmosphere"
              fill
              className="object-cover opacity-80"
+             unoptimized={true} // FIX: Bypass optimization to ensure external image loads
            />
            <div className="absolute inset-0 bg-brand-ink/20 mix-blend-multiply" />
         </div>
