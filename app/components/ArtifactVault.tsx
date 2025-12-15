@@ -4,12 +4,12 @@ import ArtifactButton from './ArtifactButton';
 
 const filters = ["All", "Read", "Listen", "View", "Acquire"];
 
-// Define the shape of the incoming artifact data
 interface Artifact {
   id: string;
   title: string;
   category: string;
   link: string;
+  image?: any;
 }
 
 interface VaultProps {
@@ -19,7 +19,6 @@ interface VaultProps {
 export default function ArtifactVault({ artifacts }: VaultProps) {
   const [activeFilter, setActiveFilter] = useState("All");
 
-  // Filter Logic
   const filteredArtifacts = activeFilter === "All" 
     ? artifacts 
     : artifacts.filter(a => a.category === activeFilter.toLowerCase());
@@ -56,11 +55,13 @@ export default function ArtifactVault({ artifacts }: VaultProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredArtifacts.length > 0 ? (
           filteredArtifacts.map((item) => (
-            <div key={item.id} className="flex flex-col group">
-               <ArtifactButton title={item.title} link={item.link} />
-               <span className="mt-3 font-sans-body text-[10px] uppercase tracking-widest text-accent-brown/50 pl-1 group-hover:text-accent-brown transition-colors">
-                 {item.category || "Uncategorized"}
-               </span>
+            <div key={item.id} className="h-full">
+               <ArtifactButton 
+                 title={item.title} 
+                 link={item.link} 
+                 category={item.category}
+                 image={item.image} 
+               />
             </div>
           ))
         ) : (
