@@ -10,7 +10,7 @@ import ArtifactVault from '@/app/components/ArtifactVault';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
 
-// QUERY UPDATE: Fetch artifacts alongside signals
+// QUERY UPDATE: We must fetch the 'image' field inside the artifact reference
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   _id,
   signalStudio,
@@ -23,14 +23,15 @@ const query = `*[_type == "issue"] | order(issueNumber desc) {
     "id": _id,
     title,
     category,
-    "link": link
+    "link": link,
+    image // <--- This is critical for the visual
   }
 }`;
 
 export default function AtlasPage() {
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [signals, setSignals] = useState<any[]>([]);
-  const [artifacts, setArtifacts] = useState<any[]>([]); // New State
+  const [artifacts, setArtifacts] = useState<any[]>([]);
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,13 +71,13 @@ export default function AtlasPage() {
           };
         });
 
-        // Extract Artifacts from Issues
+        // Map Artifacts and ensure we don't have duplicates or nulls
         const processedArtifacts = issueData
           .map((s: any) => s.artifact)
-          .filter((a: any) => a !== null); // Filter out issues without artifacts
+          .filter((a: any) => a !== null);
 
         setSignals(processedSignals);
-        setArtifacts(processedArtifacts); // Set state
+        setArtifacts(processedArtifacts);
         
         const moodStrings = moodData
           .map((m: any) => m.title)
@@ -149,7 +150,6 @@ export default function AtlasPage() {
         </section>
 
         <div className="border-t border-accent-brown/10">
-          {/* Pass the live artifacts data */}
           <ArtifactVault artifacts={artifacts} />
         </div>
       </main>
