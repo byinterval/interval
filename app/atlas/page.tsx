@@ -9,13 +9,14 @@ import ArtifactVault from '@/app/components/ArtifactVault';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
 
+// FIXED QUERY: Simplified projection to avoid syntax errors
 const query = `*[_type == "issue"] | order(issueNumber desc) {
-  "id": _id,
-  "studio": signalStudio,
-  "title": signalContext, 
-  "mood": moodTags[0]->title, 
-  "image": signalImages[0].asset->url,
-  "material": signalMaterial
+  _id,
+  signalStudio,
+  signalContext,
+  "mood": moodTags[0]->title,
+  "imageUrl": signalImages[0].asset->url,
+  signalMaterial
 }`;
 
 export default function AtlasPage() {
@@ -38,17 +39,22 @@ export default function AtlasPage() {
         console.log("Atlas: Signals Fetched:", signalData);
         console.log("Atlas: Moods Fetched:", moodData);
 
-        if (!moodData || moodData.length === 0) {
-          console.warn("Atlas: No moods returned from Sanity!");
-        }
+        // Map the raw Sanity data to the structure SignalCard expects
+        const processedSignals = signalData.map((s: any) => ({
+          id: s._id,
+          studio: s.signalStudio,
+          title: s.signalContext,
+          mood: s.mood,
+          image: s.imageUrl,
+          material: s.signalMaterial
+        }));
 
-        setSignals(signalData);
+        setSignals(processedSignals);
         
         const moodStrings = moodData
           .map((m: any) => m.title)
           .filter((t: any) => typeof t === 'string' && t.length > 0);
           
-        console.log("Atlas: Final Mood Strings:", moodStrings);
         setAvailableMoods(moodStrings);
         setIsLoading(false);
 
