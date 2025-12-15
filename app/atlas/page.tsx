@@ -38,8 +38,15 @@ export default function AtlasPage() {
 
         const processedSignals = signalData.map((s: any) => {
           // Resolve Image URL safely
-          const rawImage = s.signalImages?.[0] || s.coverImage;
-          const imageUrl = rawImage ? urlFor(rawImage).width(800).url() : null;
+          // Check if signalImages is an array and has items, otherwise use coverImage
+          const rawImage = (Array.isArray(s.signalImages) && s.signalImages.length > 0) 
+            ? s.signalImages[0] 
+            : s.coverImage;
+            
+          // Only generate URL if we have a valid image object with an asset
+          const imageUrl = (rawImage && rawImage.asset) 
+            ? urlFor(rawImage).width(800).url() 
+            : null;
 
           return {
             id: s._id,
