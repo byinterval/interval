@@ -130,7 +130,7 @@ export default function AtlasPage() {
           />
         </div>
 
-        {/* THE DEMO BLOCKER */}
+        {/* THE DEMO BLOCKER - UPDATED LOGIC */}
         {/* If user selects a mood AND is not authenticated, show the grid underneath but block interaction */}
         {activeMood && !isAuthenticated && (
             <>
