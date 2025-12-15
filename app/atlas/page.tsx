@@ -77,9 +77,32 @@ export default function AtlasPage() {
   };
 
   if (error) {
+    const isCorsError = error.includes("Request error") || error.includes("NetworkError");
     return (
-      <div className="min-h-screen flex items-center justify-center text-red-500 font-sans-body">
-        Error loading Atlas: {error}
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 bg-primary-bg">
+        <div className="max-w-xl">
+          <p className="font-serif-title text-2xl text-red-600 mb-4">Connection Failed</p>
+          <p className="font-sans-body text-brand-ink mb-8">
+            {isCorsError 
+              ? "Your website is blocked from accessing the Sanity database. This is a security setting called CORS." 
+              : `Error: ${error}`}
+          </p>
+          
+          {isCorsError && (
+            <div className="bg-white p-8 border border-accent-brown/20 rounded-sm text-left shadow-sm">
+              <p className="font-bold text-accent-brown text-sm uppercase tracking-widest mb-4">How to Fix (Required):</p>
+              <ol className="list-decimal list-inside space-y-3 text-sm text-brand-ink/80 font-sans-body">
+                <li>Go to <a href="https://sanity.io/manage" target="_blank" rel="noreferrer" className="underline text-accent-brown">sanity.io/manage</a></li>
+                <li>Select your project (<strong>nd9as5hh</strong>)</li>
+                <li>Go to <strong>API</strong> &rarr; <strong>CORS Origins</strong></li>
+                <li>Click <strong>Add CORS Origin</strong></li>
+                <li>Paste your Vercel URL (e.g., https://your-project.vercel.app)</li>
+                <li><strong>IMPORTANT:</strong> Check the box "Allow credentials"</li>
+                <li>Click Save and refresh this page.</li>
+              </ol>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
