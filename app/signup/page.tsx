@@ -8,8 +8,8 @@ export default function SignUpPage() {
 
   // Replace with your actual Memberful Plan IDs
   const PLAN_IDS = {
-    monthly: 'plan_founding_monthly', // Replace with ID like '12345'
-    annual: 'plan_founding_annual'    // Replace with ID like '67890'
+    monthly: '142480', // Replace with ID like '12345'
+    annual: '142480'    // Replace with ID like '67890'
   };
 
   const activePlanId = billingCycle === 'monthly' ? PLAN_IDS.monthly : PLAN_IDS.annual;
