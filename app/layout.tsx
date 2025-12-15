@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google"; 
 import GlobalNavigation from './components/GlobalNavigation'; 
+import Script from 'next/script'; // Import Script component
 import "./globals.css";
 
-// 1. Configure Typography
 const serif = Playfair_Display({ 
   subsets: ["latin"], 
   variable: '--font-serif',
@@ -29,15 +29,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${serif.variable} ${sans.variable} bg-primary-bg text-brand-ink antialiased`}>
+        {/* Load Memberful Script */}
+        <Script 
+          src="https://d15k2d11r6t6rl.cloudfront.net/public/users/integrations/memberful.js" 
+          strategy="afterInteractive"
+          data-memberful-site="https://theinterval.memberful.com" // REPLACE THIS
+        />
         
-        {/* Navigation is the only header now */}
         <GlobalNavigation />
 
-        {/* REMOVED: The static <header> block that contained "The Interval" title 
-           has been deleted to prevent overlapping with the sticky navigation.
-        */}
-
-        {/* Padding top (pt-32) ensures content starts below the sticky nav */}
         <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen pt-32">
           {children}
         </main>

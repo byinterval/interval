@@ -1,26 +1,26 @@
 'use client';
 import { useState } from 'react';
-
-// Mock hook - replace with actual Memberful auth logic later
-const useMember = () => {
-  return { id: "test-user-123", isAuthenticated: true }; // Placeholder
-};
+import { useMember } from '@/app/hooks/useMember'; // Import custom hook
 
 export default function SaveButton({ itemId }: { itemId?: string }) {
   const [saved, setSaved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const member = useMember();
+  // Destructure 'id' and rename it to 'memberId'
+  const { isAuthenticated, id: memberId, login } = useMember(); 
 
   const toggleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!member.isAuthenticated || !itemId) {
-        alert("Please log in to save items."); // Or open login modal
+    e.stopPropagation();
+
+    if (!isAuthenticated || !itemId) {
+        // Trigger Memberful Login Overlay
+        login(); 
         return;
     }
 
     setIsLoading(true);
-    
     // Optimistic UI update
+    const previousState = saved;
     setSaved(!saved);
 
     try {
@@ -28,17 +28,20 @@ export default function SaveButton({ itemId }: { itemId?: string }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          memberId: member.id,
+          memberId: memberId, // FIX: Use the destructured variable 'memberId' directly
           itemId: itemId,
-          action: saved ? 'unsave' : 'save'
+          action: previousState ? 'unsave' : 'save'
         })
       });
 
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        throw new Error('Failed to save');
+      }
       
     } catch (error) {
       console.error(error);
-      setSaved(saved); // Revert on error
+      setSaved(previousState); // Revert on error
+      alert("Failed to save item. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +51,7 @@ export default function SaveButton({ itemId }: { itemId?: string }) {
     <button 
       onClick={toggleSave}
       disabled={isLoading}
-      className="absolute top-4 right-4 z-30 p-2 rounded-full transition-all duration-300 group/btn"
+      className="absolute top-4 right-4 z-30 p-2 rounded-full transition-all duration-300 group/btn hover:bg-white/20 backdrop-blur-sm"
       aria-label={saved ? "Remove from Atlas" : "Save to Atlas"}
     >
       {saved ? (
