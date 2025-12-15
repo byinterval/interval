@@ -43,6 +43,8 @@ export default function SanityImage({ src, alt, fill, className, sizes, priority
       className={className}
       sizes={sizes}
       priority={priority}
+      // Often external images fail optimization if domains aren't perfect. 
+      // unoptimized={true} can be a quick fix to test if it's a Next.js config issue.
       onError={(e) => {
         console.error("SanityImage Load Error:", src, e);
         setError(true);
