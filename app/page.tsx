@@ -1,16 +1,9 @@
 import { client } from "@/lib/sanity";
-// FIX: Changed from CalmEntry_temp to CalmEntry
-import CalmEntry from './components/CalmEntry'; 
-// FIX: Ensure this file exists
-import HomepageFilter from './components/HomepageFilter'; 
+import CalmEntry from './components/CalmEntry';
+import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
+import IssueHero from './components/IssueHero'; // Import the Hero
 import Image from "next/image";
-
-// ... (Rest of your Homepage code remains exactly the same)
-// ... Keep the GROQ query and the component logic
-// ...
-// Just ensure you COPY THE FULL CONTENT if you aren't sure, 
-// or manually fix the import lines at the top.
 
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
@@ -30,8 +23,7 @@ const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
 
 async function getLatestIssue() {
   try {
-    const data = await client.fetch(query, {}, { cache: 'no-store' });
-    return data;
+    return await client.fetch(query, {}, { cache: 'no-store' });
   } catch (error) {
     console.error("Sanity Fetch Error:", error);
     return null;
@@ -45,22 +37,30 @@ export default async function Home() {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-primary-bg text-brand-ink p-6 text-center">
         <h1 className="font-serif-title text-4xl mb-4">The Interval</h1>
-        <p className="font-sans-body text-accent-brown">
-          Sanctuary is preparing the first issue...
-        </p>
+        <p className="font-sans-body text-accent-brown">Sanctuary is preparing the first issue...</p>
       </main>
     );
   }
 
   return (
     <CalmEntry>
-      <section className="text-center max-w-2xl mx-auto mb-32">
+      {/* 1. HERO HEADER (Fixed) */}
+      {/* Negative margin (-mt-32) pulls it up behind the transparent nav for full-bleed effect */}
+      {issue.coverImage && (
+        <div className="-mt-32 mb-20">
+            <IssueHero 
+                issueNumber={issue.issueNumber}
+                title={issue.title}
+                imageSrc={issue.coverImage}
+            />
+        </div>
+      )}
+
+      {/* 2. The Thesis */}
+      <section className="text-center max-w-2xl mx-auto mb-32 px-6">
         <span className="font-sans-body text-xs text-accent-brown uppercase tracking-widest mb-4 block">
-          The Weekly Ritual | Issue {issue.issueNumber}
+          The Weekly Ritual
         </span>
-        <h2 className="font-serif-title text-5xl text-accent-brown mb-8 leading-tight">
-          {issue.title}
-        </h2>
         <p className="font-serif-title text-xl leading-relaxed text-brand-ink/80 whitespace-pre-wrap">
           {issue.thesisBody}
         </p>
@@ -68,6 +68,7 @@ export default async function Home() {
 
       <HomepageFilter />
 
+      {/* 3. The Signal */}
       <article className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center mt-32 border-t border-secondary-bg pt-24">
         <div className="space-y-8 order-2 md:order-1">
           <div className="space-y-2">
@@ -99,16 +100,17 @@ export default async function Home() {
         </div>
 
         <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden">
-           {issue.signalImage ? (
+           {/* Fallback to Cover Image if Signal Image is missing */}
+           {issue.signalImage || issue.coverImage ? (
              <Image 
-               src={issue.signalImage} 
+               src={issue.signalImage || issue.coverImage} 
                alt={issue.signalStudio || "Signal Image"}
                fill
                className="object-cover"
              />
            ) : (
              <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic">
-               [No Signal Image Uploaded]
+               [No Image Available]
              </div>
            )}
         </div>
