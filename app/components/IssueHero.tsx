@@ -1,12 +1,13 @@
 'use client';
-import SanityImage from './SanityImage'; // Import robust image
+import SanityImage from './SanityImage'; 
 import AudioPrompt from './AudioPrompt';
 import CalmEntry from './CalmEntry';
 
 interface HeroProps {
   issueNumber: string;
   title: string;
-  imageSrc: string;
+  // FIX: Allow null here to match the data type from page.tsx
+  imageSrc: string | null;
 }
 
 export default function IssueHero({ issueNumber, title, imageSrc }: HeroProps) {

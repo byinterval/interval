@@ -1,21 +1,21 @@
 import { client } from "@/lib/sanity";
+import { urlFor } from "@/lib/image"; // Import our new helper
 import CalmEntry from './components/CalmEntry';
 import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
 import IssueHero from './components/IssueHero'; 
 import SanityImage from './components/SanityImage';
-import Image from "next/image";
 
-// QUERY UPDATE: Use 'coalesce' to find the first non-null image URL directly in GROQ
+// QUERY UPDATE: Fetch raw 'coverImage' and 'signalImages' objects (no ->url)
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
   title,
-  "heroImage": coalesce(coverImage.asset->url, signalImages[0].asset->url),
+  coverImage, 
   thesisBody,
   signalStudio,
   signalContext,
   signalMethod,
-  "signalImage": coalesce(signalImages[0].asset->url, coverImage.asset->url),
+  signalImages,
   "artifact": linkedArtifact->{
     title,
     "link": link
@@ -25,8 +25,7 @@ const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
 
 async function getLatestIssue() {
   try {
-    const data = await client.fetch(query, {}, { cache: 'no-store' });
-    return data;
+    return await client.fetch(query, {}, { cache: 'no-store' });
   } catch (error) {
     console.error("Sanity Fetch Error:", error);
     return null;
@@ -45,6 +44,11 @@ export default async function Home() {
     );
   }
 
+  // Generate URLs safely
+  const heroUrl = issue.coverImage ? urlFor(issue.coverImage).width(1920).url() : null;
+  // Fallback logic handled in JS
+  const signalUrl = issue.signalImages?.[0] ? urlFor(issue.signalImages[0]).width(800).url() : heroUrl;
+
   return (
     <CalmEntry>
       {/* 1. HERO HEADER */}
@@ -52,8 +56,7 @@ export default async function Home() {
         <IssueHero 
           issueNumber={issue.issueNumber}
           title={issue.title}
-          // Pass the resolved 'heroImage' from the query
-          imageSrc={issue.heroImage}
+          imageSrc={heroUrl}
         />
       </div>
 
@@ -101,9 +104,8 @@ export default async function Home() {
         </div>
 
         <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden">
-           {/* Use the resolved signalImage directly */}
            <SanityImage 
-             src={issue.signalImage} 
+             src={signalUrl} 
              alt={issue.signalStudio || "Signal Image"}
              fill
              className="object-cover"
