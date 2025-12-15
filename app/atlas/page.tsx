@@ -10,7 +10,7 @@ import ArtifactVault from '@/app/components/ArtifactVault';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
 
-// Query raw image objects
+// Query raw image objects (signalImages, coverImage) instead of ->url strings
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   _id,
   signalStudio,
