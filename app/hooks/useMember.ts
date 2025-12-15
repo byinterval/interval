@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 
+// EXTENDED INTERFACE
 interface Member {
   id: string;
-  email: string;
+  email?: string;
   isActive: boolean;
+  role: 'member' | 'guest' | 'public'; // New Role Logic
 }
 
 export function useMember() {
@@ -11,43 +13,52 @@ export function useMember() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for Memberful cookie as a proxy for logged-in state
-    const hasCookie = document.cookie.includes('memberful_session');
+    // 1. Check for Memberful (Active Member)
+    const memberfulCookie = document.cookie.includes('memberful_session');
     
-    if (hasCookie) {
+    // 2. Check for Guest Session (Hospitality)
+    const guestCookie = document.cookie.includes('interval_guest_session');
+
+    if (memberfulCookie) {
       setMember({
-        id: "current-member-id", 
-        // In a real app, you'd fetch the real email from an API endpoint
-        email: "member@theinterval.com", 
-        isActive: true
+        id: "member-id", 
+        email: "member@theinterval.com",
+        isActive: true,
+        role: 'member'
+      });
+    } else if (guestCookie) {
+      setMember({
+        id: "guest-session",
+        isActive: true,
+        role: 'guest' // B2B Access
       });
     }
+
     setIsLoading(false);
   }, []);
 
-  // Helper to safely call Memberful window object
   const safeMemberfulAction = (action: (m: any) => void) => {
     // @ts-ignore
     if (typeof window !== 'undefined' && window.Memberful) {
       // @ts-ignore
       action(window.Memberful);
-    } else {
-      console.warn("Memberful script not loaded");
     }
   };
 
   return {
     id: member?.id,
     isAuthenticated: !!member,
+    role: member?.role || 'public',
     email: member?.email,
     isLoading,
     isActive: member?.isActive,
     
-    // Actions
-    login: () => safeMemberfulAction((m) => m.openOverlay()),
+    login: () => window.location.href = "/login", // Redirect to our custom page now
     logout: () => {
+      // Clear Guest Cookie
+      document.cookie = "interval_guest_session=; path=/; max-age=0";
       safeMemberfulAction((m) => m.signout());
-      window.location.href = "/"; // Redirect home after logout
+      window.location.href = "/";
     },
     openBilling: () => safeMemberfulAction((m) => m.openUpdateCard()),
     openSubscriptions: () => safeMemberfulAction((m) => m.openSubscriptions()),
