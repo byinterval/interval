@@ -2,8 +2,8 @@ import { client } from "@/lib/sanity";
 import CalmEntry from './components/CalmEntry';
 import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
-import IssueHero from './components/IssueHero'; // Import the Hero
-import Image from "next/image";
+import IssueHero from './components/IssueHero'; 
+import SanityImage from './components/SanityImage'; // NEW IMPORT
 
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
@@ -44,17 +44,15 @@ export default async function Home() {
 
   return (
     <CalmEntry>
-      {/* 1. HERO HEADER (Fixed) */}
-      {/* Negative margin (-mt-32) pulls it up behind the transparent nav for full-bleed effect */}
-      {issue.coverImage && (
-        <div className="-mt-32 mb-20">
-            <IssueHero 
-                issueNumber={issue.issueNumber}
-                title={issue.title}
-                imageSrc={issue.coverImage}
-            />
-        </div>
-      )}
+      {/* 1. HERO HEADER */}
+      {/* We use negative margin (-mt-32) to pull it up behind the transparent nav */}
+      <div className="-mt-32 mb-20">
+        <IssueHero 
+          issueNumber={issue.issueNumber}
+          title={issue.title}
+          imageSrc={issue.coverImage}
+        />
+      </div>
 
       {/* 2. The Thesis */}
       <section className="text-center max-w-2xl mx-auto mb-32 px-6">
@@ -101,18 +99,12 @@ export default async function Home() {
 
         <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden">
            {/* Fallback to Cover Image if Signal Image is missing */}
-           {issue.signalImage || issue.coverImage ? (
-             <Image 
-               src={issue.signalImage || issue.coverImage} 
-               alt={issue.signalStudio || "Signal Image"}
-               fill
-               className="object-cover"
-             />
-           ) : (
-             <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic">
-               [No Image Available]
-             </div>
-           )}
+           <SanityImage 
+             src={issue.signalImage || issue.coverImage} 
+             alt={issue.signalStudio || "Signal Image"}
+             fill
+             className="object-cover"
+           />
         </div>
       </article>
     </CalmEntry>

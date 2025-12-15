@@ -1,5 +1,5 @@
 'use client';
-import Image from 'next/image';
+import SanityImage from './SanityImage'; // Import robust image
 import AudioPrompt from './AudioPrompt';
 import CalmEntry from './CalmEntry';
 
@@ -13,16 +13,16 @@ export default function IssueHero({ issueNumber, title, imageSrc }: HeroProps) {
   return (
     <section className="relative w-full h-[85vh] overflow-hidden">
       <div className="absolute inset-0">
-        {imageSrc ? (
-          <Image src={imageSrc} alt={title} fill className="object-cover" priority />
-        ) : (
-          <div className="w-full h-full bg-secondary-bg" />
-        )}
+        <SanityImage 
+          src={imageSrc} 
+          alt={title} 
+          fill 
+          className="object-cover" 
+          priority 
+        />
         <div className="absolute inset-0 bg-brand-ink/20 mix-blend-multiply" />
       </div>
-
       <AudioPrompt />
-
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
         <CalmEntry>
           <span className="font-sans-body text-xs text-primary-bg uppercase tracking-[0.25em] mb-6 block drop-shadow-sm">
