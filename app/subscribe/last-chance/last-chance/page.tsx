@@ -1,11 +1,10 @@
-// app/subscribe/last-chance/page.tsx
-import CalmEntry from '@/app/components/CalmEntry_temp';
+// FIX: Changed from CalmEntry_temp to CalmEntry
+import CalmEntry from '@/app/components/CalmEntry'; 
 import { Playfair_Display } from 'next/font/google';
 
 const serif = Playfair_Display({ subsets: ['latin'] });
 
 export default function LastChancePaywall() {
-  // IMPORTANT: Replace this with your actual Memberful URL for checkout
   const memberfulCheckoutURL = "YOUR_MEMBERFUL_CHECKOUT_URL_HERE"; 
   
   return (
@@ -15,7 +14,7 @@ export default function LastChancePaywall() {
           The Lock is Active
         </h1>
         <p className="text-xl text-stone-600 mt-6 mb-8">
-          The Living Atlas is a permanent library of taste—a utility, not a blog[cite: 178]. 
+          The Living Atlas is a permanent library of taste—a utility, not a blog. 
           Access to the Atmospheric Search and Dynamic Field Guides requires the subscription.
         </p>
         
@@ -31,7 +30,7 @@ export default function LastChancePaywall() {
         </a>
         
         <p className="text-sm mt-8 text-stone-400">
-          Seamless access via Memberful—no clunky generic portal[cite: 5].
+          Seamless access via Memberful—no clunky generic portal.
         </p>
       </div>
     </CalmEntry>
