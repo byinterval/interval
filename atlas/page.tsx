@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { client } from '@/lib/sanity';
-import CalmEntry from '../components/CalmEntry';
-import MoodFilter from '../components/MoodFilter';
-import SignalCard from '../components/SignalCard';
-import ArtifactVault from '../components/ArtifactVault';
-import MasonryGrid from '../components/MasonryGrid';
-import CalmGridItem from '../components/CalmGridItem';
+// FIX: Using Absolute Imports to bypass relative path errors
+import CalmEntry from '@/app/components/CalmEntry';
+import MoodFilter from '@/app/components/MoodFilter';
+import SignalCard from '@/app/components/SignalCard';
+import ArtifactVault from '@/app/components/ArtifactVault';
+import MasonryGrid from '@/app/components/MasonryGrid';
+import CalmGridItem from '@/app/components/CalmGridItem';
 
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   "id": _id,
@@ -23,40 +24,38 @@ export default function AtlasPage() {
   const [signals, setSignals] = useState<any[]>([]);
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         console.log("Atlas: Starting Data Fetch...");
         
-        // Fetch Signals and Moods in parallel
         const [signalData, moodData] = await Promise.all([
           client.fetch(query),
           client.fetch(`*[_type == "mood"] | order(title asc) {title}`)
         ]);
 
-        console.log("Atlas: Raw Signal Data:", signalData);
-        console.log("Atlas: Raw Mood Data:", moodData);
+        console.log("Atlas: Signals Fetched:", signalData);
+        console.log("Atlas: Moods Fetched:", moodData);
 
-        // Process Moods: Ensure we get a flat array of strings
-        // Sanity returns [{title: "Rain"}, {title: "Silence"}]
-        // We want ["Rain", "Silence"]
-        const moodStrings = moodData
-          .map((m: any) => m.title)
-          .filter((t: any) => typeof t === 'string' && t.trim() !== '');
-          
-        console.log("Atlas: Processed Mood Strings:", moodStrings);
-
-        if (moodStrings.length === 0) {
-          console.warn("Atlas: No valid mood strings found even after processing.");
+        if (!moodData || moodData.length === 0) {
+          console.warn("Atlas: No moods returned from Sanity!");
         }
 
         setSignals(signalData);
+        
+        const moodStrings = moodData
+          .map((m: any) => m.title)
+          .filter((t: any) => typeof t === 'string' && t.length > 0);
+          
+        console.log("Atlas: Final Mood Strings:", moodStrings);
         setAvailableMoods(moodStrings);
         setIsLoading(false);
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Atlas Fetch Error:", err);
+        setError(err.message || "Failed to load Atlas data.");
         setIsLoading(false);
       }
     };
@@ -69,9 +68,16 @@ export default function AtlasPage() {
     : signals;
 
   const handleMoodSelect = (mood: string) => {
-    console.log("Atlas: Mood Selected:", mood);
     setActiveMood(prev => (prev === mood ? null : mood));
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500 font-sans-body">
+        Error loading Atlas: {error}
+      </div>
+    );
+  }
 
   return (
     <CalmEntry>
@@ -85,9 +91,7 @@ export default function AtlasPage() {
           </h1>
         </header>
 
-        {/* Sticky Filter Container */}
         <div className="sticky top-0 z-40 bg-primary-bg/95 backdrop-blur-md border-b border-accent-brown/5 transition-all">
-          {/* Render MoodFilter even if empty to show fallback message */}
           <MoodFilter 
             moods={availableMoods} 
             activeMood={activeMood}
