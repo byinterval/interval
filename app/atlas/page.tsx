@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { client } from '@/lib/sanity';
-import { urlFor } from '@/lib/image'; // Import helper
+import { urlFor } from '@/lib/image'; 
 import CalmEntry from '@/app/components/CalmEntry';
 import MoodFilter from '@/app/components/MoodFilter';
 import SignalCard from '@/app/components/SignalCard';
@@ -10,7 +10,7 @@ import ArtifactVault from '@/app/components/ArtifactVault';
 import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
 
-// Query raw image objects
+// QUERY UPDATE: Fetch artifacts alongside signals
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   _id,
   signalStudio,
@@ -18,12 +18,19 @@ const query = `*[_type == "issue"] | order(issueNumber desc) {
   "mood": moodTags[0]->title,
   signalImages, 
   coverImage,
-  signalMaterial
+  signalMaterial,
+  "artifact": linkedArtifact->{
+    "id": _id,
+    title,
+    category,
+    "link": link
+  }
 }`;
 
 export default function AtlasPage() {
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [signals, setSignals] = useState<any[]>([]);
+  const [artifacts, setArtifacts] = useState<any[]>([]); // New State
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,31 +38,25 @@ export default function AtlasPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [signalData, moodData] = await Promise.all([
+        const [issueData, moodData] = await Promise.all([
           client.fetch(query),
           client.fetch(`*[_type == "mood"] | order(title asc) {title}`)
         ]);
 
-        const processedSignals = signalData.map((s: any) => {
-          // Resolve Image URL safely
+        const processedSignals = issueData.map((s: any) => {
           let rawImage = null;
-
-          // Priority 1: First signal image
           if (s.signalImages && Array.isArray(s.signalImages) && s.signalImages.length > 0) {
             rawImage = s.signalImages[0];
-          } 
-          // Priority 2: Cover image
-          else if (s.coverImage) {
+          } else if (s.coverImage) {
             rawImage = s.coverImage;
           }
 
-          // Generate URL only if we have a valid source
           let imageUrl = null;
           if (rawImage) {
             try {
               imageUrl = urlFor(rawImage).width(800).url();
             } catch (e) {
-              console.error("Error generating URL for image:", rawImage, e);
+              console.error("Error generating URL:", e);
             }
           }
 
@@ -69,7 +70,13 @@ export default function AtlasPage() {
           };
         });
 
+        // Extract Artifacts from Issues
+        const processedArtifacts = issueData
+          .map((s: any) => s.artifact)
+          .filter((a: any) => a !== null); // Filter out issues without artifacts
+
         setSignals(processedSignals);
+        setArtifacts(processedArtifacts); // Set state
         
         const moodStrings = moodData
           .map((m: any) => m.title)
@@ -96,9 +103,7 @@ export default function AtlasPage() {
     setActiveMood(prev => (prev === mood ? null : mood));
   };
 
-  if (error) {
-    return <div className="p-10 text-center text-red-500">{error}</div>;
-  }
+  if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
 
   return (
     <CalmEntry>
@@ -144,7 +149,8 @@ export default function AtlasPage() {
         </section>
 
         <div className="border-t border-accent-brown/10">
-          <ArtifactVault />
+          {/* Pass the live artifacts data */}
+          <ArtifactVault artifacts={artifacts} />
         </div>
       </main>
     </CalmEntry>
