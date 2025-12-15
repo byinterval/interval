@@ -1,41 +1,53 @@
 'use client';
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { client } from '@/lib/sanity';
+import { urlFor } from '@/lib/image';
 import { useMember } from '@/app/hooks/useMember';
 import CalmEntry from '@/app/components/CalmEntry';
+import SanityImage from '@/app/components/SanityImage'; 
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [accessCode, setAccessCode] = useState('');
   const [mode, setMode] = useState<'magic' | 'code'>('magic');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   
   const { login } = useMember(); 
 
-  // Handle Magic Link Submission
+  // Fetch the latest issue cover image for the atmosphere
+  useEffect(() => {
+    const fetchCover = async () => {
+      try {
+        const query = `*[_type == "issue"] | order(issueNumber desc)[0] { coverImage }`;
+        const data = await client.fetch(query);
+        if (data?.coverImage) {
+          const url = urlFor(data.coverImage).width(1200).url();
+          setCoverImage(url);
+        }
+      } catch (e) {
+        console.error("Login Image Fetch Error", e);
+      }
+    };
+    fetchCover();
+  }, []);
+
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('loading');
-    
-    // Simulate API delay for "Calm" feeling
     setTimeout(() => {
       setStatus('success'); 
-      // In production: window.location.href = `https://YOUR_SUBDOMAIN.memberful.com/auth/sign_in?email=${email}`;
     }, 1500);
   };
 
-  // Handle Hospitality Code
   const handleAccessCode = (e: React.FormEvent) => {
     e.preventDefault();
     setStatus('loading');
-    
-    // Verify code against list (Mock for now)
     if (accessCode.toUpperCase() === 'ACE-KYOTO-2025') {
       setTimeout(() => {
-        // Provision Guest Session (Set Cookie)
-        document.cookie = "interval_guest_session=true; path=/; max-age=604800"; // 7 days
-        window.location.href = "/atlas"; // Redirect to sanctuary
+        document.cookie = "interval_guest_session=true; path=/; max-age=604800"; 
+        window.location.href = "/atlas"; 
       }, 1500);
     } else {
       setTimeout(() => setStatus('error'), 1000);
@@ -139,17 +151,16 @@ export default function LoginPage() {
       {/* ZONE B: THE MOOD (Atmosphere) */}
       <div className="hidden md:block w-1/2 relative bg-secondary-bg overflow-hidden h-screen sticky top-0">
         <div className="absolute inset-0">
-           <Image 
-             src="https://images.unsplash.com/photo-1493723843689-d205189326e5?q=80&w=2000" 
-             alt="Atmosphere"
+           {/* Dynamic Sanity Image with fallback */}
+           <SanityImage 
+             src={coverImage} 
+             alt="Atmospheric Texture"
              fill
-             className="object-cover opacity-80"
-             unoptimized={true} // FIX: Bypass optimization to ensure external image loads
+             className="object-cover opacity-90"
            />
            <div className="absolute inset-0 bg-brand-ink/20 mix-blend-multiply" />
         </div>
         
-        {/* Pull Quote */}
         <div className="absolute bottom-24 left-12 right-12 max-w-lg">
           <p className="font-serif-title text-4xl text-primary-bg leading-tight drop-shadow-md">
             "Silence is not an absence. It is a material."
