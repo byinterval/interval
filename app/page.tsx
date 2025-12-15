@@ -1,12 +1,12 @@
 import { client } from "@/lib/sanity";
-import { urlFor } from "@/lib/image"; // Import our new helper
+import { urlFor } from "@/lib/image"; 
 import CalmEntry from './components/CalmEntry';
 import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
 import IssueHero from './components/IssueHero'; 
 import SanityImage from './components/SanityImage';
 
-// QUERY UPDATE: Fetch raw 'coverImage' and 'signalImages' objects (no ->url)
+// QUERY UPDATE: Fetch ALL signal images, not just the first one
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
   title,
@@ -15,7 +15,7 @@ const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   signalStudio,
   signalContext,
   signalMethod,
-  signalImages,
+  signalImages, // Fetch the array
   "artifact": linkedArtifact->{
     title,
     "link": link
@@ -44,10 +44,8 @@ export default async function Home() {
     );
   }
 
-  // Generate URLs safely
+  // Generate Hero URL
   const heroUrl = issue.coverImage ? urlFor(issue.coverImage).width(1920).url() : null;
-  // Fallback logic handled in JS
-  const signalUrl = issue.signalImages?.[0] ? urlFor(issue.signalImages[0]).width(800).url() : heroUrl;
 
   return (
     <CalmEntry>
@@ -72,9 +70,11 @@ export default async function Home() {
 
       <HomepageFilter />
 
-      {/* 3. The Signal */}
-      <article className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center mt-32 border-t border-secondary-bg pt-24">
-        <div className="space-y-8 order-2 md:order-1">
+      {/* 3. The Signal (Forensic Stack) */}
+      <article className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-start mt-32 border-t border-secondary-bg pt-24">
+        
+        {/* Left Column: Text & Context (Sticky on Desktop) */}
+        <div className="space-y-8 order-2 md:order-1 md:sticky md:top-32">
           <div className="space-y-2">
             <span className="font-sans-body text-xs uppercase tracking-widest text-accent-brown">
               II. The Signal
@@ -103,13 +103,31 @@ export default async function Home() {
           )}
         </div>
 
-        <div className="order-1 md:order-2 bg-secondary-bg aspect-[4/5] relative overflow-hidden">
-           <SanityImage 
-             src={signalUrl} 
-             alt={issue.signalStudio || "Signal Image"}
-             fill
-             className="object-cover"
-           />
+        {/* Right Column: Visual Evidence (Vertical Stack) */}
+        <div className="order-1 md:order-2 flex flex-col gap-8">
+           {issue.signalImages && issue.signalImages.length > 0 ? (
+             issue.signalImages.map((img: any, i: number) => (
+               <div key={i} className="bg-secondary-bg w-full relative">
+                 {/* Using SanityImage with auto-height logic by not forcing 'fill' if we want natural aspect ratio, 
+                     but for masonry feel, let's use a standard container aspect ratio or just width */}
+                 <div className="relative w-full aspect-[3/4]">
+                   <SanityImage 
+                     src={urlFor(img).width(800).url()} 
+                     alt={`Forensic Detail ${i + 1}`}
+                     fill
+                     className="object-cover"
+                   />
+                 </div>
+                 <p className="text-[10px] uppercase tracking-widest text-accent-brown/60 mt-2">
+                   Fig. {i + 1}
+                 </p>
+               </div>
+             ))
+           ) : (
+             <div className="aspect-[3/4] bg-secondary-bg flex items-center justify-center text-accent-brown/30 font-serif-title italic">
+               [No Forensic Images Available]
+             </div>
+           )}
         </div>
       </article>
     </CalmEntry>
