@@ -2,19 +2,23 @@
 import { useMember } from '@/app/hooks/useMember';
 
 export default function IdentitySidebar() {
-  const { email, logout, openBilling, openSubscriptions } = useMember();
+  const { email, logout, openBilling, openSubscriptions, isActive } = useMember();
 
   return (
     <aside className="w-full md:w-[28%] md:h-screen md:sticky md:top-0 border-r border-accent-brown/10 p-6 md:p-12 flex flex-col bg-primary-bg">
       
       {/* 1. Member Profile */}
       <div className="mb-12">
-        <h1 className="font-serif-title text-2xl text-brand-ink mb-2 truncate">
-          {email || "Guest"}
+        <h1 className="font-serif-title text-xl text-brand-ink mb-2 truncate" title={email || "Guest"}>
+          {email || "Member Account"}
         </h1>
         <div className="flex items-center space-x-3 mb-1">
-          <span className="inline-block border border-accent-brown/30 rounded-full px-3 py-1 font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">
-            Member
+          <span className={`inline-block border rounded-full px-3 py-1 font-sans-body text-[10px] uppercase tracking-widest ${
+            isActive 
+              ? "border-accent-brown/30 text-accent-brown" 
+              : "border-gray-300 text-gray-400"
+          }`}>
+            {isActive ? "Active Member" : "Guest View"}
           </span>
         </div>
         <p className="font-sans-body text-[10px] text-accent-brown/50 uppercase tracking-widest mt-2">
