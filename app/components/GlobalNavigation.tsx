@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import SearchOverlay from './SearchOverlay';
 import DotMenu from './DotMenu';
 import { client } from '@/lib/sanity';
-import { useMember } from '@/app/hooks/useMember'; // Import Auth Hook
+import { useMember } from '@/app/hooks/useMember'; 
 
 export default function GlobalNavigation() {
   const pathname = usePathname();
@@ -13,7 +13,6 @@ export default function GlobalNavigation() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [latestIssue, setLatestIssue] = useState<{ issueNumber: string; title: string } | null>(null);
   
-  // Auth State
   const { isAuthenticated, login } = useMember();
 
   useEffect(() => {
@@ -51,6 +50,7 @@ export default function GlobalNavigation() {
               The Interval
             </Link>
             
+            {/* Show Issue Indicator only if logged in or on homepage */}
             <div className="hidden md:flex items-center space-x-2 font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               <span>No. {latestIssue?.issueNumber || "00"}</span>
@@ -61,56 +61,66 @@ export default function GlobalNavigation() {
             </div>
           </div>
 
-          {/* ZONE 2: MODE SWITCH */}
+          {/* ZONE 2: MODE SWITCH (Hidden for Non-Members) */}
           <div className="hidden md:flex justify-center w-1/3">
-            <div className="flex bg-secondary-bg/50 rounded-full p-1 border border-accent-brown/5">
-              <Link 
-                href="/" 
-                className={`px-5 py-1.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 ${
-                  !isAtlasMode ? 'bg-primary-bg shadow-sm text-brand-ink' : 'text-accent-brown/60 hover:text-accent-brown'
-                }`}
-              >
-                The Issue
-              </Link>
-              <Link 
-                href="/atlas" 
-                className={`px-5 py-1.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 ${
-                  isAtlasMode ? 'bg-primary-bg shadow-sm text-brand-ink' : 'text-accent-brown/60 hover:text-accent-brown'
-                }`}
-              >
-                The Atlas
-              </Link>
-            </div>
+            {isAuthenticated && (
+              <div className="flex bg-secondary-bg/50 rounded-full p-1 border border-accent-brown/5">
+                <Link 
+                  href="/" 
+                  className={`px-5 py-1.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 ${
+                    !isAtlasMode ? 'bg-primary-bg shadow-sm text-brand-ink' : 'text-accent-brown/60 hover:text-accent-brown'
+                  }`}
+                >
+                  The Issue
+                </Link>
+                <Link 
+                  href="/atlas" 
+                  className={`px-5 py-1.5 rounded-full text-[10px] uppercase tracking-widest transition-all duration-300 ${
+                    isAtlasMode ? 'bg-primary-bg shadow-sm text-brand-ink' : 'text-accent-brown/60 hover:text-accent-brown'
+                  }`}
+                >
+                  The Atlas
+                </Link>
+              </div>
+            )}
           </div>
 
-          {/* ZONE 3: UTILITY */}
+          {/* ZONE 3: UTILITY / ACQUISITION */}
           <div className="flex items-center justify-end space-x-6 w-1/3">
-            <button 
-              onClick={() => setIsSearchOpen(true)}
-              className="hidden md:flex items-center space-x-2 text-accent-brown hover:text-brand-ink transition-colors group"
-            >
-              <span className="font-sans-body text-[10px] uppercase tracking-widest opacity-60 group-hover:opacity-100">
-                Search
-              </span>
-            </button>
-
-            {/* Auth Action: Login or Vault */}
             {isAuthenticated ? (
-              <Link href="/account" className="text-accent-brown hover:text-brand-ink transition-colors" aria-label="My Vault">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
-                </svg>
-              </Link>
+              <>
+                <button 
+                  onClick={() => setIsSearchOpen(true)}
+                  className="hidden md:flex items-center space-x-2 text-accent-brown hover:text-brand-ink transition-colors group"
+                >
+                  <span className="font-sans-body text-[10px] uppercase tracking-widest opacity-60 group-hover:opacity-100">
+                    Search
+                  </span>
+                </button>
+                <Link href="/account" className="text-accent-brown hover:text-brand-ink transition-colors" aria-label="My Vault">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+                  </svg>
+                </Link>
+                <DotMenu />
+              </>
             ) : (
-              <button 
-                onClick={login}
-                className="font-sans-body text-[10px] uppercase tracking-widest text-accent-brown hover:text-brand-ink transition-colors"
-              >
-                Member Login
-              </button>
+              <>
+                {/* PUBLIC NAV: Acquisition Focus */}
+                <Link 
+                  href="/login"
+                  className="hidden md:block font-sans-body text-[10px] uppercase tracking-widest text-accent-brown hover:text-brand-ink transition-colors"
+                >
+                  Login
+                </Link>
+                <Link 
+                  href="/signup"
+                  className="font-sans-body text-[10px] uppercase tracking-widest bg-transparent border border-accent-brown/30 px-5 py-2 rounded-full text-accent-brown hover:bg-brand-ink hover:text-primary-bg hover:border-brand-ink transition-all"
+                >
+                  Membership
+                </Link>
+              </>
             )}
-            
-            <DotMenu />
           </div>
         </div>
       </header>
