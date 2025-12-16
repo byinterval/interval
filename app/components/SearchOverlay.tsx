@@ -1,5 +1,6 @@
 'use client';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 
 interface SearchProps {
   isOpen: boolean;
@@ -32,15 +33,33 @@ export default function SearchOverlay({ isOpen, onClose }: SearchProps) {
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
             <span className="font-sans-body text-xs text-accent-brown uppercase tracking-[0.2em] mb-12 block">Discovery Engine</span>
             
+            {/* Moods - Link to Atlas */}
             <div className="mb-16 max-w-3xl">
               <h3 className="font-serif-title text-2xl text-brand-ink mb-6 italic">Select an Atmosphere</h3>
               <div className="flex flex-wrap justify-center gap-4">
                 {moods.map(mood => (
-                  <button key={mood} className="font-sans-body text-sm uppercase tracking-wide border border-accent-brown/30 px-6 py-3 rounded-full hover:bg-brand-ink hover:text-primary-bg transition-all">
+                  <Link
+                    key={mood}
+                    href={`/atlas?mood=${mood}`}
+                    onClick={onClose}
+                    className="font-sans-body text-sm uppercase tracking-wide border border-accent-brown/30 px-6 py-3 rounded-full hover:bg-brand-ink hover:text-primary-bg transition-all"
+                  >
                     {mood}
-                  </button>
+                  </Link>
                 ))}
               </div>
+            </div>
+
+            {/* Cities - Placeholder Links for now */}
+            <div className="mb-16 max-w-3xl">
+               <h3 className="font-serif-title text-2xl text-brand-ink mb-6 italic">Select a Location</h3>
+               <div className="flex flex-wrap justify-center gap-6 font-sans-body text-sm text-accent-brown/80">
+                 {cities.map(city => (
+                   <button key={city} className="hover:text-brand-ink hover:underline decoration-1 underline-offset-4 transition-all">
+                     {city}
+                   </button>
+                 ))}
+               </div>
             </div>
           </div>
         </motion.div>

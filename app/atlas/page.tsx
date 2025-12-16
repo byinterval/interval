@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { client } from '@/lib/sanity';
 import { urlFor } from '@/lib/image'; 
-import { useMember } from '@/app/hooks/useMember'; // Auth Hook
+import { useMember } from '@/app/hooks/useMember'; 
+import { useSearchParams } from 'next/navigation'; // Import hook
 import CalmEntry from '@/app/components/CalmEntry';
 import MoodFilter from '@/app/components/MoodFilter';
 import SignalCard from '@/app/components/SignalCard';
@@ -12,7 +13,6 @@ import MasonryGrid from '@/app/components/MasonryGrid';
 import CalmGridItem from '@/app/components/CalmGridItem';
 import Link from 'next/link';
 
-// Query to fetch all necessary data
 const query = `*[_type == "issue"] | order(issueNumber desc) {
   _id,
   signalStudio,
@@ -37,7 +37,16 @@ export default function AtlasPage() {
   const [availableMoods, setAvailableMoods] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const { isAuthenticated } = useMember(); // Check Auth
+  const { isAuthenticated } = useMember();
+  const searchParams = useSearchParams(); // Access URL params
+
+  // 1. Handle Deep Linking via URL Query
+  useEffect(() => {
+    const moodFromUrl = searchParams.get('mood');
+    if (moodFromUrl) {
+      setActiveMood(moodFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,12 +109,7 @@ export default function AtlasPage() {
     ? signals.filter(s => s.mood === activeMood)
     : signals;
 
-  // Filter artifacts based on issues that match the mood (approximate logic for demo)
-  // In a real app, artifacts would be tagged with moods too.
-  const artifactCount = activeMood ? Math.floor(filteredSignals.length / 2) : artifacts.length;
-
   const handleMoodSelect = (mood: string) => {
-    // Allows selection even if not authenticated to trigger "Demo Mode" view
     setActiveMood(prev => (prev === mood ? null : mood));
   };
 
@@ -121,7 +125,6 @@ export default function AtlasPage() {
           </h1>
         </header>
 
-        {/* SEARCH BAR (Always Visible) */}
         <div className="sticky top-0 z-40 bg-primary-bg/95 backdrop-blur-md border-b border-accent-brown/5 transition-all">
           <MoodFilter 
             moods={availableMoods} 
@@ -130,16 +133,10 @@ export default function AtlasPage() {
           />
         </div>
 
-        {/* THE DEMO BLOCKER - UPDATED LOGIC */}
-        {/* If user selects a mood AND is not authenticated, show the grid underneath but block interaction */}
         {activeMood && !isAuthenticated && (
             <>
-                {/* 1. The Overlay Barrier */}
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-auto">
-                    {/* Backdrop Blur to obscure detail but show volume */}
                     <div className="absolute inset-0 bg-primary-bg/60 backdrop-blur-sm" onClick={() => setActiveMood(null)} />
-                    
-                    {/* The Lock Card */}
                     <div className="relative max-w-md w-full bg-white border border-accent-brown/20 p-12 text-center shadow-2xl animate-in fade-in zoom-in-95 duration-500">
                         <span className="inline-block mb-6 p-3 rounded-full bg-accent-brown/5 text-accent-brown">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
@@ -152,7 +149,7 @@ export default function AtlasPage() {
                         </p>
                         
                         <h3 className="font-serif-title text-3xl text-brand-ink mb-4 leading-tight">
-                            {filteredSignals.length} Signals and {artifactCount} Artifacts curated for <br/>
+                            {filteredSignals.length} Signals found for <br/>
                             <span className="italic text-accent-brown">'{activeMood}'</span>
                         </h3>
                         
@@ -179,7 +176,6 @@ export default function AtlasPage() {
             </>
         )}
 
-        {/* 2. The Grid (Rendered but unreachable if locked) */}
         <section className={`py-20 min-h-[60vh] transition-all duration-500 ${activeMood && !isAuthenticated ? 'opacity-40 pointer-events-none filter blur-[2px]' : ''}`}>
            <MasonryGrid>
              <AnimatePresence mode='popLayout'>
@@ -196,7 +192,6 @@ export default function AtlasPage() {
                  </CalmGridItem>
                ))}
              </AnimatePresence>
-             {/* ... empty state logic ... */}
            </MasonryGrid>
         </section>
 

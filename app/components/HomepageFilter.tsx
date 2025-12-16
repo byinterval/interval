@@ -1,16 +1,25 @@
 'use client';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import MoodFilter from './MoodFilter';
 
 export default function HomepageFilter() {
-  const [activeMood, setActiveMood] = useState<string | null>(null);
+  const router = useRouter();
   const moods = ["Silence", "Texture", "Morning", "Patina", "Low Light"];
+
+  const handleNavigation = (mood: string) => {
+    // If 'Reset View' is clicked (empty string), do nothing or go to Atlas root
+    if (!mood) {
+        router.push('/atlas');
+    } else {
+        router.push(`/atlas?mood=${mood}`);
+    }
+  };
 
   return (
     <MoodFilter 
       moods={moods}
-      activeMood={activeMood}
-      onMoodSelect={(mood) => setActiveMood(mood === activeMood ? null : mood)}
+      activeMood={null} // No active mood on homepage
+      onMoodSelect={handleNavigation}
     />
   );
 }
