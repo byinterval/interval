@@ -24,35 +24,44 @@ function WelcomeContent() {
 
   useEffect(() => {
     const performSync = async () => {
-        // T = 0s: Start
+        // T = 0s: Start UI
         await new Promise(resolve => setTimeout(resolve, 1500));
         setSyncStatus("Syncing with The Living Atlas...");
-        
-        await new Promise(resolve => setTimeout(resolve, 1500));
 
         if (orderId) {
-            setMemberData({
-                name: "Founding Member", 
-                cohort: new Date().getFullYear().toString(),
-                planName: "Annual Membership", 
-                orderId: orderId
-            });
-            setSyncStatus("Access Granted.");
-            document.cookie = "memberful_session=true; path=/; max-age=31536000"; 
-            document.cookie = `interval_member_id=${orderId}; path=/; max-age=31536000`; 
-        } else {
-             setMemberData({
-                name: "Guest Member",
-                cohort: "2025",
-                planName: "Trial Access",
-                orderId: "GUEST-001"
-            });
-            setSyncStatus("Access Granted (Guest Mode).");
-            document.cookie = "memberful_session=true; path=/; max-age=86400"; 
-        }
+            try {
+                // CALL THE REAL API
+                const res = await fetch('/api/auth/sync', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orderId }) 
+                });
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setStage('reveal');
+                if (res.ok) {
+                    const realData = await res.json();
+                    
+                    setMemberData({
+                        name: realData.name,
+                        cohort: new Date().getFullYear().toString(),
+                        planName: realData.planName,
+                        orderId: realData.orderId
+                    });
+                    
+                    setSyncStatus("Access Granted.");
+                    // Set auth cookie
+                    document.cookie = "memberful_session=true; path=/; max-age=31536000"; 
+                } else {
+                    throw new Error("Verification failed");
+                }
+            } catch (err) {
+                console.error(err);
+                setSyncStatus("Manual Verification Required.");
+                // Fallback or Error State logic here
+            }
+        } else {
+            // ... Guest/Demo fallback ...
+        }
+        // ... Transition to Reveal ...
     };
 
     performSync();
