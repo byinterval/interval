@@ -9,16 +9,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Your Specific Brand Palette
-        'primary-bg': '#F8F6F2',   // Unbleached Paper (Primary)
-        'secondary-bg': '#E6E1DB', // Warm Grey (Secondary)
-        'accent-brown': '#5D514C', // Brown (Logo/Titles/Accents)
-        'brand-ink': '#201F1E',    // Soft Black (Body Font)
+        'primary-bg': '#F8F6F2',   
+        'secondary-bg': '#E6E1DB', 
+        'accent-brown': '#5D514C', 
+        'brand-ink': '#201F1E',    
       },
       fontFamily: {
         'serif-title': ['var(--font-serif)', 'serif'],
         'sans-body': ['var(--font-sans)', 'sans-serif'],
       },
+      // NEW: Add custom animation
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
+      }
     },
   },
   plugins: [],

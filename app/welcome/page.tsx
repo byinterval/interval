@@ -4,29 +4,31 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import CalmEntry from '@/app/components/CalmEntry';
-import { useMember } from '@/app/hooks/useMember'; // We'll update the hook to handle the sync
 
 export default function WelcomePage() {
   const [stage, setStage] = useState<'sync' | 'reveal'>('sync');
   const [syncStatus, setSyncStatus] = useState("Verifying Membership...");
-  const searchParams = useSearchParams();
   
-  // In a real app, you'd grab the order ID from Memberful redirect
+  // In a real app, you would grab the order ID here to verify with backend
+  // const searchParams = useSearchParams();
   // const orderId = searchParams.get('order');
 
   useEffect(() => {
     // PHASE 1: THE SYNC SIMULATION
-    // T = 0s: Start
+    
+    // T = 1.5s: Update status
     const timer1 = setTimeout(() => {
       setSyncStatus("Syncing with The Living Atlas...");
     }, 1500);
 
+    // T = 3s: Success & Cookie Set
     const timer2 = setTimeout(() => {
       setSyncStatus("Access Granted.");
-      // Set the cookie to 'active' member immediately so they can browse
+      // Set the auth cookie immediately so they can browse
       document.cookie = "memberful_session=true; path=/; max-age=31536000"; 
     }, 3000);
 
+    // T = 4s: Transition to Reveal
     const timer3 = setTimeout(() => {
       setStage('reveal');
     }, 4000);
@@ -71,7 +73,7 @@ export default function WelcomePage() {
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-xl w-full"
           >
-            {/* COMPONENT 1: PERSONAL WELCOME */}
+            {/* PHASE 2: THE REVEAL */}
             <h1 className="font-serif-title text-4xl md:text-5xl text-brand-ink mb-4">
               Welcome to the Cohort.
             </h1>
@@ -79,7 +81,7 @@ export default function WelcomePage() {
               You are now a Founding Member of The Interval.
             </p>
 
-            {/* COMPONENT 2: DIGITAL MEMBERSHIP CARD */}
+            {/* DIGITAL MEMBERSHIP CARD */}
             <div className="bg-white border-2 border-double border-accent-brown/20 p-8 mb-12 shadow-sm mx-auto max-w-sm rotate-1 hover:rotate-0 transition-transform duration-500">
                <div className="flex justify-between items-start mb-8">
                  <span className="font-serif-title text-xl text-brand-ink">The Interval</span>
@@ -101,7 +103,7 @@ export default function WelcomePage() {
                </div>
             </div>
 
-            {/* COMPONENT 3: RITUAL INSTRUCTION */}
+            {/* RITUAL INSTRUCTION */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left mb-16 border-t border-accent-brown/10 pt-8">
                <div>
                  <span className="font-sans-body text-[10px] uppercase tracking-widest text-accent-brown block mb-2">Thursday</span>
