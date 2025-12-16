@@ -5,40 +5,70 @@ import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import CalmEntry from '@/app/components/CalmEntry';
 
+// Interface for Member Data
+interface MemberData {
+  name: string;
+  cohort: string;
+  planName: string;
+  orderId: string;
+}
+
 export default function WelcomePage() {
   const [stage, setStage] = useState<'sync' | 'reveal'>('sync');
   const [syncStatus, setSyncStatus] = useState("Verifying Membership...");
+  const [memberData, setMemberData] = useState<MemberData | null>(null);
   
-  // In a real app, you would grab the order ID here to verify with backend
-  // const searchParams = useSearchParams();
-  // const orderId = searchParams.get('order');
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get('order') || searchParams.get('id'); // Memberful sends 'order' or 'id'
 
   useEffect(() => {
-    // PHASE 1: THE SYNC SIMULATION
+    // PHASE 1: THE SYNC LOGIC
     
-    // T = 1.5s: Update status
-    const timer1 = setTimeout(() => {
-      setSyncStatus("Syncing with The Living Atlas...");
-    }, 1500);
+    const performSync = async () => {
+        // T = 0s: Start
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        setSyncStatus("Syncing with The Living Atlas...");
 
-    // T = 3s: Success & Cookie Set
-    const timer2 = setTimeout(() => {
-      setSyncStatus("Access Granted.");
-      // Set the auth cookie immediately so they can browse
-      document.cookie = "memberful_session=true; path=/; max-age=31536000"; 
-    }, 3000);
+        // T = 1.5s: Fetch Data (Simulated API Call)
+        // In production, this would be: 
+        // const res = await fetch('/api/auth/sync', { body: JSON.stringify({ orderId }) });
+        // const data = await res.json();
+        
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // T = 4s: Transition to Reveal
-    const timer3 = setTimeout(() => {
-      setStage('reveal');
-    }, 4000);
+        // SIMULATED PAYLOAD RESOLUTION
+        if (orderId) {
+            // Real-ish data derived from the ID
+            setMemberData({
+                name: "Founding Member", // Would come from API
+                cohort: new Date().getFullYear().toString(),
+                planName: "Annual Membership", // Would come from API
+                orderId: orderId
+            });
+            setSyncStatus("Access Granted.");
+            
+            // Set the auth cookie
+            document.cookie = "memberful_session=true; path=/; max-age=31536000"; 
+            document.cookie = `interval_member_id=${orderId}; path=/; max-age=31536000`; // Store ID
+        } else {
+            // Fallback for demo / direct access without order ID
+             setMemberData({
+                name: "Guest Member",
+                cohort: "2025",
+                planName: "Trial Access",
+                orderId: "GUEST-001"
+            });
+            setSyncStatus("Access Granted (Guest Mode).");
+            document.cookie = "memberful_session=true; path=/; max-age=86400"; // 1 day
+        }
 
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
+        // T = 4s: Transition
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setStage('reveal');
     };
-  }, []);
+
+    performSync();
+  }, [orderId]);
 
   return (
     <div className="min-h-screen bg-primary-bg flex flex-col items-center justify-center p-6 text-center">
@@ -52,7 +82,7 @@ export default function WelcomePage() {
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col items-center space-y-8"
           >
-            {/* COMPONENT 1: THE TOTEM (Animation) */}
+            {/* THE TOTEM (Animation) */}
             <div className="relative w-16 h-16">
                <svg className="animate-spin-slow w-full h-full text-brand-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                  <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
@@ -60,7 +90,7 @@ export default function WelcomePage() {
                </svg>
             </div>
             
-            {/* COMPONENT 2: THE STATUS TEXT */}
+            {/* THE STATUS TEXT */}
             <p className="font-sans-body text-xs uppercase tracking-widest text-accent-brown animate-pulse">
               {syncStatus}
             </p>
@@ -78,14 +108,16 @@ export default function WelcomePage() {
               Welcome to the Cohort.
             </h1>
             <p className="font-sans-body text-brand-ink/60 mb-12 leading-relaxed">
-              You are now a Founding Member of The Interval.
+              You are now a {memberData?.name} of The Interval.
             </p>
 
             {/* DIGITAL MEMBERSHIP CARD */}
             <div className="bg-white border-2 border-double border-accent-brown/20 p-8 mb-12 shadow-sm mx-auto max-w-sm rotate-1 hover:rotate-0 transition-transform duration-500">
                <div className="flex justify-between items-start mb-8">
                  <span className="font-serif-title text-xl text-brand-ink">The Interval</span>
-                 <span className="font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">No. 00124</span>
+                 <span className="font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">
+                    No. {memberData?.orderId.slice(0,6).toUpperCase()}
+                 </span>
                </div>
                <div className="space-y-2 text-left">
                  <div className="flex justify-between border-b border-accent-brown/10 pb-1">
@@ -94,7 +126,7 @@ export default function WelcomePage() {
                  </div>
                  <div className="flex justify-between border-b border-accent-brown/10 pb-1">
                     <span className="font-sans-body text-[10px] uppercase text-accent-brown/60">Cohort</span>
-                    <span className="font-sans-body text-[10px] uppercase text-brand-ink">2025</span>
+                    <span className="font-sans-body text-[10px] uppercase text-brand-ink">{memberData?.cohort}</span>
                  </div>
                  <div className="flex justify-between border-b border-accent-brown/10 pb-1">
                     <span className="font-sans-body text-[10px] uppercase text-accent-brown/60">Access</span>
