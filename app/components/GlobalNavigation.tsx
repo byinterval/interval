@@ -13,13 +13,7 @@ export default function GlobalNavigation() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [latestIssue, setLatestIssue] = useState<{ issueNumber: string; title: string } | null>(null);
   
-  // Destructure checkAuth if you added it to the hook, otherwise we rely on internal state update
   const { isAuthenticated, login, isLoading } = useMember();
-
-  // DEBUG: Check auth state
-  useEffect(() => {
-    console.log("Nav Auth State:", isAuthenticated);
-  }, [isAuthenticated]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -39,9 +33,6 @@ export default function GlobalNavigation() {
 
   const isAtlasMode = pathname?.includes('/atlas');
 
-  // Prevent flash of incorrect nav state by waiting for loading? 
-  // Optional, but 'isAuthenticated' defaults to false, so 'Login' shows first.
-  
   return (
     <>
       <header 
@@ -69,9 +60,9 @@ export default function GlobalNavigation() {
             </div>
           </div>
 
-          {/* ZONE 2: MODE SWITCH (Hidden for Non-Members) */}
+          {/* ZONE 2: MODE SWITCH */}
           <div className="hidden md:flex justify-center w-1/3">
-            {isAuthenticated && (
+            {!isLoading && isAuthenticated && (
               <div className="flex bg-secondary-bg/50 rounded-full p-1 border border-accent-brown/5">
                 <Link 
                   href="/" 
@@ -93,9 +84,8 @@ export default function GlobalNavigation() {
             )}
           </div>
 
-          {/* ZONE 3: UTILITY / ACQUISITION */}
+          {/* ZONE 3: UTILITY */}
           <div className="flex items-center justify-end space-x-6 w-1/3">
-            {/* SEARCH: Always Visible */}
             <button 
               onClick={() => setIsSearchOpen(true)}
               className="hidden md:flex items-center space-x-2 text-accent-brown hover:text-brand-ink transition-colors group"
@@ -105,8 +95,9 @@ export default function GlobalNavigation() {
               </span>
             </button>
 
-            {isAuthenticated ? (
-              // MEMBER VIEW
+            {isLoading ? (
+               <div className="h-8 w-20 bg-secondary-bg/50 animate-pulse rounded-full" />
+            ) : isAuthenticated ? (
               <>
                 <Link href="/account" className="text-accent-brown hover:text-brand-ink transition-colors" aria-label="My Vault">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -116,7 +107,6 @@ export default function GlobalNavigation() {
                 <DotMenu />
               </>
             ) : (
-              // PUBLIC VIEW (Acquisition)
               <>
                 <Link 
                   href="/login"
