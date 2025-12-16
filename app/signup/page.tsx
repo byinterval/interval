@@ -5,7 +5,7 @@ import CalmEntry from '@/app/components/CalmEntry';
 export default function SignUpPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
 
-  // REPLACE THESE WITH YOUR REAL LEMON SQUEEZY LINKS
+  // LEMON SQUEEZY VARIANT URLS (Replace with yours!)
   const CHECKOUT_URLS = {
     monthly: 'https://theinterval.lemonsqueezy.com/buy/95a294a6-75fb-4cbf-a5d0-6cdb2e6cffb6?enabled=1153473', 
     annual: 'https://theinterval.lemonsqueezy.com/buy/2ddf2910-8144-4403-b81b-eec93648dd9f?enabled=1153468'   
