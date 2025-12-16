@@ -1,24 +1,46 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import CalmEntry from '@/app/components/CalmEntry';
 
 export default function SignUpPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
 
-  // Replace with your actual Memberful Plan IDs
-  const PLAN_IDS = {
-    monthly: 'plan_founding_monthly', // Replace with ID like '12345'
-    annual: 'plan_founding_annual'    // Replace with ID like '67890'
+  // LEMON SQUEEZY VARIANT URLS
+  // Replace these with your actual Lemon Squeezy checkout URLs for each variant
+  const CHECKOUT_URLS = {
+    monthly: 'https://store.theinterval.com/checkout/buy/11111?embed=1', 
+    annual: 'https://store.theinterval.com/checkout/buy/22222?embed=1'   
   };
 
-  const activePlanId = billingCycle === 'monthly' ? PLAN_IDS.monthly : PLAN_IDS.annual;
+  const activeUrl = billingCycle === 'monthly' ? CHECKOUT_URLS.monthly : CHECKOUT_URLS.annual;
   const activePrice = billingCycle === 'monthly' ? '£8/month' : '£80/year';
+
+  // Initialize Lemon Squeezy on mount to ensure the overlay script works
+  useEffect(() => {
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.createLemonSqueezy) {
+      // @ts-ignore
+      window.createLemonSqueezy();
+    }
+  }, []);
+
+  const openCheckout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // @ts-ignore
+    if (typeof window !== 'undefined' && window.LemonSqueezy) {
+      // @ts-ignore
+      window.LemonSqueezy.Url.Open(activeUrl);
+    } else {
+        // Fallback if script hasn't loaded yet
+        window.location.href = activeUrl;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1A1A]">
       <CalmEntry>
-        {/* Navigation removed per request */}
+        {/* Navigation Removed per request */}
 
         <main className="max-w-4xl mx-auto px-6 pt-32 md:pt-48 pb-24 flex flex-col items-center">
           
@@ -32,14 +54,13 @@ export default function SignUpPage() {
               Join the Founding Members of The Interval and reclaim 5 minutes of calm every week.
             </p>
             
-            {/* Primary CTA - Triggers Memberful Overlay */}
-            <a
-              href={`https://theinterval.memberful.com/checkout?plan=${PLAN_IDS.monthly}`} // Default to monthly for the hero button as per brief
-              data-memberful-checkout-overlay
+            {/* Primary CTA - Triggers Lemon Squeezy Overlay */}
+            <button
+              onClick={openCheckout}
               className="inline-block border border-[#1A1A1A] text-[#1A1A1A] px-8 py-4 uppercase text-xs tracking-[0.2em] font-sans-body hover:bg-[#1A1A1A] hover:text-[#FDFBF7] transition-all duration-500"
             >
-              Become a Member £8/month
-            </a>
+              Become a Member {activePrice}
+            </button>
           </section>
 
           {/* ZONE B: THE LEDGER (Value Pillars) */}
@@ -132,13 +153,12 @@ export default function SignUpPage() {
               </div>
 
               {/* Dynamic Checkout Button */}
-              <a
-                href={`https://theinterval.memberful.com/checkout?plan=${activePlanId}`}
-                data-memberful-checkout-overlay
+              <button
+                onClick={openCheckout}
                 className="block w-full bg-[#1A1A1A] text-[#FDFBF7] py-4 uppercase text-xs tracking-[0.2em] hover:bg-[#5D514C] transition-colors"
               >
                 Become a Member
-              </a>
+              </button>
 
               <p className="font-serif-title italic text-sm text-[#1A1A1A]/40">
                 Pause or cancel anytime from your Registry.

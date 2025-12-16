@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google"; 
+import Script from 'next/script';
+// FIX: Add this import statement
 import GlobalNavigation from './components/GlobalNavigation'; 
-import Script from 'next/script'; // Import Script component
 import "./globals.css";
 
 const serif = Playfair_Display({ 
@@ -29,13 +30,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${serif.variable} ${sans.variable} bg-primary-bg text-brand-ink antialiased`}>
-        {/* Load Memberful Script */}
+        
+        {/* Lemon Squeezy Overlay Script */}
         <Script 
-          src="https://d15k2d11r6t6rl.cloudfront.net/public/users/integrations/memberful.js" 
-          strategy="afterInteractive"
-          data-memberful-site="https://theinterval.memberful.com" // REPLACE THIS
+          src="https://assets.lemonsqueezy.com/lemon.js" 
+          strategy="lazyOnload"
         />
         
+        {/* Navigation Component */}
         <GlobalNavigation />
 
         <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen pt-32">

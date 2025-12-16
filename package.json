@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@lemonsqueezy/wedges": "^1.4.0",
     "framer-motion": "^12.23.26",
     "next": "16.0.10",
     "next-sanity": "^11.6.10",
