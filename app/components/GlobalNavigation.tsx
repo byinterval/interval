@@ -13,11 +13,12 @@ export default function GlobalNavigation() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [latestIssue, setLatestIssue] = useState<{ issueNumber: string; title: string } | null>(null);
   
-  const { isAuthenticated, login } = useMember();
+  // Destructure checkAuth if you added it to the hook, otherwise we rely on internal state update
+  const { isAuthenticated, login, isLoading } = useMember();
 
-  // DEBUG: Check what the nav sees
+  // DEBUG: Check auth state
   useEffect(() => {
-    console.log("GlobalNavigation Auth State:", isAuthenticated);
+    console.log("Nav Auth State:", isAuthenticated);
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -38,6 +39,9 @@ export default function GlobalNavigation() {
 
   const isAtlasMode = pathname?.includes('/atlas');
 
+  // Prevent flash of incorrect nav state by waiting for loading? 
+  // Optional, but 'isAuthenticated' defaults to false, so 'Login' shows first.
+  
   return (
     <>
       <header 
@@ -55,7 +59,6 @@ export default function GlobalNavigation() {
               The Interval
             </Link>
             
-            {/* Issue Indicator - Visible to all, grounds the experience */}
             <div className="hidden md:flex items-center space-x-2 font-sans-body text-[10px] uppercase tracking-widest text-accent-brown">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               <span>No. {latestIssue?.issueNumber || "00"}</span>
@@ -66,7 +69,7 @@ export default function GlobalNavigation() {
             </div>
           </div>
 
-          {/* ZONE 2: MODE SWITCH (Hidden for Public) */}
+          {/* ZONE 2: MODE SWITCH (Hidden for Non-Members) */}
           <div className="hidden md:flex justify-center w-1/3">
             {isAuthenticated && (
               <div className="flex bg-secondary-bg/50 rounded-full p-1 border border-accent-brown/5">
@@ -92,7 +95,7 @@ export default function GlobalNavigation() {
 
           {/* ZONE 3: UTILITY / ACQUISITION */}
           <div className="flex items-center justify-end space-x-6 w-1/3">
-            {/* SEARCH: Always Visible (Demo Mode for Public) */}
+            {/* SEARCH: Always Visible */}
             <button 
               onClick={() => setIsSearchOpen(true)}
               className="hidden md:flex items-center space-x-2 text-accent-brown hover:text-brand-ink transition-colors group"

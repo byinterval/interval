@@ -11,17 +11,12 @@ export function useMember() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const hasCookie = document.cookie.includes('memberful_session');
-    
-    if (hasCookie) {
-      setMember({
-        id: "current-member-id", 
-        email: "member@theinterval.com", 
-        isActive: true
-      });
-    }
-    setIsLoading(false);
-  }, []);
+  const memberful = document.cookie.includes('memberful_session');
+  const guest = document.cookie.includes('interval_guest_session');
+  if (memberful || guest) {
+     // setAuthenticated(true)...
+  }
+}, []);
 
   const safeMemberfulAction = (action: (m: any) => void) => {
     // @ts-ignore
