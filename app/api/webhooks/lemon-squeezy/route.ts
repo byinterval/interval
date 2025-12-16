@@ -12,7 +12,6 @@ const client = createClient({
 
 export async function POST(request: Request) {
   try {
-    // 1. Validate Signature
     const rawBody = await request.text();
     const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET || '';
     const hmac = crypto.createHmac('sha256', secret);
@@ -27,15 +26,11 @@ export async function POST(request: Request) {
     const eventName = payload.meta.event_name;
     const data = payload.data.attributes;
 
-    // 2. Handle Subscription Created
     if (eventName === 'subscription_created') {
       const email = data.user_email;
       const name = data.user_name;
       const customerId = data.customer_id;
-      const orderId = data.order_id; // Use this for the Welcome page sync
 
-      // Create/Update User in Sanity
-      // We use email as the deterministic ID to avoid dupes
       const docId = `member-${email.replace(/[@.]/g, '-')}`;
 
       await client.createOrReplace({
@@ -45,14 +40,12 @@ export async function POST(request: Request) {
         name: name,
         lemonCustomerId: customerId.toString(),
         status: 'active',
-        savedItems: [] // Init empty vault
+        savedItems: [] 
       });
-
-      console.log(`User ${email} synced to Sanity.`);
+      console.log(`User ${email} synced.`);
     }
 
     return NextResponse.json({ received: true });
-
   } catch (error) {
     console.error('Webhook Error:', error);
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google"; 
 import Script from 'next/script';
-// FIX: Add this import statement
 import GlobalNavigation from './components/GlobalNavigation'; 
 import "./globals.css";
 
@@ -37,7 +36,6 @@ export default function RootLayout({
           strategy="lazyOnload"
         />
         
-        {/* Navigation Component */}
         <GlobalNavigation />
 
         <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen pt-32">
