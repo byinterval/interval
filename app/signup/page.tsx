@@ -8,12 +8,12 @@ export default function SignUpPage() {
 
   // Replace with your actual Memberful Plan IDs
   const PLAN_IDS = {
-    monthly: '142480', // Replace with ID like '12345'
-    annual: '142479'    // Replace with ID like '67890'
+    monthly: 'plan_founding_monthly', // Replace with ID like '12345'
+    annual: 'plan_founding_annual'    // Replace with ID like '67890'
   };
 
   const activePlanId = billingCycle === 'monthly' ? PLAN_IDS.monthly : PLAN_IDS.annual;
-  const activePrice = billingCycle === 'monthly' ? '£8/month' : '£86/year';
+  const activePrice = billingCycle === 'monthly' ? '£8/month' : '£80/year';
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1A1A]">
@@ -39,7 +39,7 @@ export default function SignUpPage() {
             
             {/* Primary CTA - Triggers Memberful Overlay */}
             <a
-              href={`https://theinterval.memberful.com/checkout?plan=${142480}`} // Default to monthly for the hero button as per brief
+              href={`https://theinterval.memberful.com/checkout?plan=${PLAN_IDS.monthly}`} // Default to monthly for the hero button as per brief
               data-memberful-checkout-overlay
               className="inline-block border border-[#1A1A1A] text-[#1A1A1A] px-8 py-4 uppercase text-xs tracking-[0.2em] font-sans-body hover:bg-[#1A1A1A] hover:text-[#FDFBF7] transition-all duration-500"
             >
