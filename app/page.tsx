@@ -5,7 +5,11 @@ import HomepageFilter from './components/HomepageFilter';
 import ArtifactButton from './components/ArtifactButton';
 import IssueHero from './components/IssueHero'; 
 import SanityImage from './components/SanityImage';
-import ThesisLock from './components/ThesisLock'; // New Import
+import ThesisLock from './components/ThesisLock'; 
+import Image from "next/image";
+
+// FIX: Force dynamic rendering for this page to allow no-store fetches
+export const dynamic = 'force-dynamic';
 
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
   issueNumber,
@@ -23,7 +27,7 @@ const query = `*[_type == "issue"] | order(issueNumber desc)[0] {
     category,
     "link": link,
     image,
-    "description": curatorNote // Fetch description
+    "description": curatorNote 
   },
   "moods": moodTags[]->title
 }`;
@@ -67,7 +71,6 @@ export default async function Home() {
           The Weekly Ritual
         </span>
         
-        {/* REPLACED DIRECT TEXT WITH LOCK COMPONENT */}
         <ThesisLock fullText={issue.thesisBody || ""} />
         
       </section>
@@ -103,7 +106,7 @@ export default async function Home() {
               link={issue.artifact.link}
               category={issue.artifact.category}
               image={issue.artifact.image}
-              description={issue.artifact.description} // Pass description
+              description={issue.artifact.description} 
             />
           )}
         </div>
