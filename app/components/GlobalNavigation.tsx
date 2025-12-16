@@ -15,6 +15,11 @@ export default function GlobalNavigation() {
   
   const { isAuthenticated, login } = useMember();
 
+  // DEBUG: Check what the nav sees
+  useEffect(() => {
+    console.log("GlobalNavigation Auth State:", isAuthenticated);
+  }, [isAuthenticated]);
+
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
