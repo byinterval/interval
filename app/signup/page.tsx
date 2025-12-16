@@ -18,12 +18,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1A1A]">
       <CalmEntry>
-        {/* Navigation Anchor */}
-        <nav className="absolute top-0 left-0 w-full p-8 md:p-12">
-          <Link href="/" className="font-serif-title text-xl tracking-tight hover:opacity-70 transition-opacity">
-            The Interval
-          </Link>
-        </nav>
+        {/* Navigation removed per request */}
 
         <main className="max-w-4xl mx-auto px-6 pt-32 md:pt-48 pb-24 flex flex-col items-center">
           
