@@ -1,10 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { client } from '@/lib/sanity';
 import { urlFor } from '@/lib/image'; 
 import { useMember } from '@/app/hooks/useMember'; 
-import { useSearchParams } from 'next/navigation'; // Import hook
+import { useSearchParams } from 'next/navigation'; 
 import CalmEntry from '@/app/components/CalmEntry';
 import MoodFilter from '@/app/components/MoodFilter';
 import SignalCard from '@/app/components/SignalCard';
@@ -30,7 +30,8 @@ const query = `*[_type == "issue"] | order(issueNumber desc) {
   }
 }`;
 
-export default function AtlasPage() {
+// 1. Create a sub-component for the main logic that uses useSearchParams
+function AtlasContent() {
   const [activeMood, setActiveMood] = useState<string | null>(null);
   const [signals, setSignals] = useState<any[]>([]);
   const [artifacts, setArtifacts] = useState<any[]>([]);
@@ -38,9 +39,8 @@ export default function AtlasPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const { isAuthenticated } = useMember();
-  const searchParams = useSearchParams(); // Access URL params
+  const searchParams = useSearchParams(); 
 
-  // 1. Handle Deep Linking via URL Query
   useEffect(() => {
     const moodFromUrl = searchParams.get('mood');
     if (moodFromUrl) {
@@ -109,6 +109,8 @@ export default function AtlasPage() {
     ? signals.filter(s => s.mood === activeMood)
     : signals;
 
+  const artifactCount = activeMood ? Math.floor(filteredSignals.length / 2) : artifacts.length;
+
   const handleMoodSelect = (mood: string) => {
     setActiveMood(prev => (prev === mood ? null : mood));
   };
@@ -149,7 +151,7 @@ export default function AtlasPage() {
                         </p>
                         
                         <h3 className="font-serif-title text-3xl text-brand-ink mb-4 leading-tight">
-                            {filteredSignals.length} Signals found for <br/>
+                            {filteredSignals.length} Signals and {artifactCount} Artifacts curated for <br/>
                             <span className="italic text-accent-brown">'{activeMood}'</span>
                         </h3>
                         
@@ -200,5 +202,14 @@ export default function AtlasPage() {
         </div>
       </main>
     </CalmEntry>
+  );
+}
+
+// 2. Export the Page Component wrapped in Suspense
+export default function AtlasPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-primary-bg flex items-center justify-center text-accent-brown/50 font-sans-body text-xs uppercase tracking-widest">Loading Atlas...</div>}>
+      <AtlasContent />
+    </Suspense>
   );
 }
