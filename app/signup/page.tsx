@@ -6,6 +6,7 @@ export default function SignUpPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
 
   // LEMON SQUEEZY VARIANT URLS (Replace with yours!)
+  // Go to Lemon Squeezy -> Products -> Share -> Checkout Overlay -> Copy URL
   const CHECKOUT_URLS = {
     monthly: 'https://theinterval.lemonsqueezy.com/buy/95a294a6-75fb-4cbf-a5d0-6cdb2e6cffb6?enabled=1153473', 
     annual: 'https://theinterval.lemonsqueezy.com/buy/2ddf2910-8144-4403-b81b-eec93648dd9f?enabled=1153468'   
@@ -14,6 +15,7 @@ export default function SignUpPage() {
   const activeUrl = billingCycle === 'monthly' ? CHECKOUT_URLS.monthly : CHECKOUT_URLS.annual;
   const activePrice = billingCycle === 'monthly' ? '£8/month' : '£80/year';
 
+  // Initialize Lemon Squeezy on mount
   useEffect(() => {
     // @ts-ignore
     if (typeof window !== 'undefined' && window.createLemonSqueezy) {
@@ -29,6 +31,7 @@ export default function SignUpPage() {
       // @ts-ignore
       window.LemonSqueezy.Url.Open(activeUrl);
     } else {
+        // Fallback if script hasn't loaded yet
         window.location.href = activeUrl;
     }
   };

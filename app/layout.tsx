@@ -36,6 +36,7 @@ export default function RootLayout({
           strategy="lazyOnload"
         />
         
+        {/* Navigation Component */}
         <GlobalNavigation />
 
         <main className="max-w-[1400px] mx-auto px-6 md:px-12 py-20 min-h-screen pt-32">
