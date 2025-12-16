@@ -8,7 +8,7 @@ import SanityImage from './components/SanityImage';
 import ThesisLock from './components/ThesisLock'; 
 import Image from "next/image";
 
-// FIX: Force dynamic rendering for this page to allow no-store fetches
+// FIX: Force dynamic rendering to allow no-store fetch
 export const dynamic = 'force-dynamic';
 
 const query = `*[_type == "issue"] | order(issueNumber desc)[0] {

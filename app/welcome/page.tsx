@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,45 +13,34 @@ interface MemberData {
   orderId: string;
 }
 
-export default function WelcomePage() {
+// 1. Move logic to Sub-Component
+function WelcomeContent() {
   const [stage, setStage] = useState<'sync' | 'reveal'>('sync');
   const [syncStatus, setSyncStatus] = useState("Verifying Membership...");
   const [memberData, setMemberData] = useState<MemberData | null>(null);
   
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('order') || searchParams.get('id'); // Memberful sends 'order' or 'id'
+  const orderId = searchParams.get('order') || searchParams.get('id'); 
 
   useEffect(() => {
-    // PHASE 1: THE SYNC LOGIC
-    
     const performSync = async () => {
         // T = 0s: Start
         await new Promise(resolve => setTimeout(resolve, 1500));
         setSyncStatus("Syncing with The Living Atlas...");
-
-        // T = 1.5s: Fetch Data (Simulated API Call)
-        // In production, this would be: 
-        // const res = await fetch('/api/auth/sync', { body: JSON.stringify({ orderId }) });
-        // const data = await res.json();
         
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // SIMULATED PAYLOAD RESOLUTION
         if (orderId) {
-            // Real-ish data derived from the ID
             setMemberData({
-                name: "Founding Member", // Would come from API
+                name: "Founding Member", 
                 cohort: new Date().getFullYear().toString(),
-                planName: "Annual Membership", // Would come from API
+                planName: "Annual Membership", 
                 orderId: orderId
             });
             setSyncStatus("Access Granted.");
-            
-            // Set the auth cookie
             document.cookie = "memberful_session=true; path=/; max-age=31536000"; 
-            document.cookie = `interval_member_id=${orderId}; path=/; max-age=31536000`; // Store ID
+            document.cookie = `interval_member_id=${orderId}; path=/; max-age=31536000`; 
         } else {
-            // Fallback for demo / direct access without order ID
              setMemberData({
                 name: "Guest Member",
                 cohort: "2025",
@@ -59,10 +48,9 @@ export default function WelcomePage() {
                 orderId: "GUEST-001"
             });
             setSyncStatus("Access Granted (Guest Mode).");
-            document.cookie = "memberful_session=true; path=/; max-age=86400"; // 1 day
+            document.cookie = "memberful_session=true; path=/; max-age=86400"; 
         }
 
-        // T = 4s: Transition
         await new Promise(resolve => setTimeout(resolve, 1000));
         setStage('reveal');
     };
@@ -72,7 +60,6 @@ export default function WelcomePage() {
 
   return (
     <div className="min-h-screen bg-primary-bg flex flex-col items-center justify-center p-6 text-center">
-      
       <AnimatePresence mode='wait'>
         {stage === 'sync' ? (
           <motion.div 
@@ -82,15 +69,12 @@ export default function WelcomePage() {
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col items-center space-y-8"
           >
-            {/* THE TOTEM (Animation) */}
             <div className="relative w-16 h-16">
                <svg className="animate-spin-slow w-full h-full text-brand-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
                  <circle cx="12" cy="12" r="10" strokeDasharray="60" strokeDashoffset="20" />
                  <path d="M12 6v6l4 2" />
                </svg>
             </div>
-            
-            {/* THE STATUS TEXT */}
             <p className="font-sans-body text-xs uppercase tracking-widest text-accent-brown animate-pulse">
               {syncStatus}
             </p>
@@ -103,7 +87,6 @@ export default function WelcomePage() {
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-xl w-full"
           >
-            {/* PHASE 2: THE REVEAL */}
             <h1 className="font-serif-title text-4xl md:text-5xl text-brand-ink mb-4">
               Welcome to the Cohort.
             </h1>
@@ -111,7 +94,6 @@ export default function WelcomePage() {
               You are now a {memberData?.name} of The Interval.
             </p>
 
-            {/* DIGITAL MEMBERSHIP CARD */}
             <div className="bg-white border-2 border-double border-accent-brown/20 p-8 mb-12 shadow-sm mx-auto max-w-sm rotate-1 hover:rotate-0 transition-transform duration-500">
                <div className="flex justify-between items-start mb-8">
                  <span className="font-serif-title text-xl text-brand-ink">The Interval</span>
@@ -135,7 +117,6 @@ export default function WelcomePage() {
                </div>
             </div>
 
-            {/* RITUAL INSTRUCTION */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left mb-16 border-t border-accent-brown/10 pt-8">
                <div>
                  <span className="font-sans-body text-[10px] uppercase tracking-widest text-accent-brown block mb-2">Thursday</span>
@@ -147,7 +128,6 @@ export default function WelcomePage() {
                </div>
             </div>
 
-            {/* PHASE 3: FIRST ACTION */}
             <div className="flex flex-col gap-4">
               <Link 
                 href="/"
@@ -162,10 +142,18 @@ export default function WelcomePage() {
                 Configure Profile
               </Link>
             </div>
-
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// 2. Export wrapped component
+export default function WelcomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-primary-bg flex items-center justify-center p-6 text-brand-ink">Loading...</div>}>
+      <WelcomeContent />
+    </Suspense>
   );
 }
