@@ -180,7 +180,7 @@ function WelcomeFlow() {
         <div className="flex flex-col items-center space-y-6">
           <Link 
             // Dynamic link to the latest issue
-            href={latestIssue.slug ? `/issues/${latestIssue.slug}` : '/issues/latest'} 
+            href={latestIssue.slug ? `/issue/${latestIssue.slug}` : '/issue/latest'} 
             className="bg-[#1A1A1A] text-[#FDFBF7] px-8 py-4 font-mono text-sm uppercase tracking-wider hover:bg-gray-800 transition-colors w-full md:w-auto text-center"
           >
             Enter Issue {latestIssue.number}
