@@ -55,16 +55,30 @@ function WelcomeFlow() {
   const [statusMessage, setStatusMessage] = useState('Verifying Membership...');
   const [userData, setUserData] = useState({ firstName: 'Member', fullName: '' });
 
-  useEffect(() => {
-    const orderId = searchParams.get('order'); 
-    
+useEffect(() => {
+    // 1. FIND THE ID: Check every possible format Lemon Squeezy uses
+    const orderId = 
+      searchParams.get('order') ||            
+      searchParams.get('order_id') ||         
+      searchParams.get('order[id]') ||        
+      searchParams.get('checkout[id]') ||     
+      searchParams.get('checkout_id');       
+
+    // Debugging: See exactly what the URL has
+    console.log('Detected Params:', Array.from(searchParams.entries()));
+    console.log('Found Order ID:', orderId);
+
+    // 2. If no ID found, stop immediately
     if (!orderId) {
+      console.log('No order ID found in URL');
       setStatus('error');
       return;
     }
 
-    const timers: NodeJS.Timeout[] = [];
+    // 3. Setup Timers and Sync
+    const timers: ReturnType<typeof setTimeout>[] = [];
     
+    // Animation timers
     timers.push(setTimeout(() => setStatusMessage('Syncing with The Living Atlas...'), 1500));
     timers.push(setTimeout(() => setStatusMessage('Access Granted.'), 3000));
 
@@ -80,22 +94,25 @@ function WelcomeFlow() {
 
         const data = await res.json();
         
-        setTimeout(() => {
+        // Success: Update the UI
+        timers.push(setTimeout(() => {
           setUserData({ 
             firstName: data.user.firstName, 
             fullName: `${data.user.firstName} ${data.user.lastName || ''}`.trim() 
           });
           setStatus('success');
-        }, 3200);
+        }, 3200));
 
       } catch (err) {
-        console.error(err);
+        console.error('Sync Error:', err);
         setStatus('error');
       }
     };
 
+    // Start the sync
     syncSession();
 
+    // Cleanup timers if the user leaves the page
     return () => timers.forEach(clearTimeout);
   }, [searchParams]);
 
