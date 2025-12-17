@@ -1,5 +1,5 @@
-import createImageUrlBuilder from '@sanity/image-url'
-import { client } from './sanity'
+import { createImageUrlBuilder } from '@sanity/image-url' // <--- The Fix: Named Import
+import { client } from './sanity' // Assuming this is where your client is exported
 
 const imageBuilder = createImageUrlBuilder(client)
 
