@@ -1,11 +1,20 @@
 import { notFound } from 'next/navigation';
+import { createClient } from 'next-sanity'; // Import Sanity Client
 import IssueHero from '../../components/IssueHero';
 import ThesisModule from '../../components/ThesisModule';
 import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
-// 1. Define the shape of your CMS data (The Interface)
+// 1. Setup Sanity Client
+const client = createClient({
+  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+  dataset: 'production',
+  apiVersion: '2024-01-01',
+  useCdn: false, // Set to false so you see updates immediately
+});
+
+// 2. Define the shape of your CMS data
 interface IssueData {
   slug: string;
   issueNumber: string;
@@ -24,55 +33,49 @@ interface IssueData {
   artifact: {
     title: string;
     subtitle: string;
-    imagePlaceholder: string; // In real app, this is a URL
+    imagePlaceholder: string; 
     link: string;
   };
 }
 
-// 2. Simulate the Database Fetch (Mocking Sanity Client)
+// 3. Real Database Fetch
 async function getIssueData(slug: string): Promise<IssueData | null> {
-  // In a real app, this would be: await client.fetch(query, { slug })
-  
-  // MOCK DATABASE
-  const db: Record<string, IssueData> = {
-    "01": {
-      slug: "01",
-      issueNumber: "01",
-      title: "The Architecture of Silence",
-      coverImage: "https://images.unsplash.com/photo-1493723843689-d205189326e5?q=80&w=2000&auto=format&fit=crop",
-      thesis: "Silence is not merely the absence of noise. It is a physical material, constructed through shadow, texture, and density. This week, we explore how to build it.",
-      signal: {
-        studio: "Studio O",
-        context: "In the frenetic heart of Tokyo, Studio O treats light not as a utility, but as a tactile material.",
-        method: "By layering washi paper over raw concrete, they filter harsh city frequencies into a soft, amber glow. Note the absence of overhead lighting—shadow creates the volume.",
-        geoTag: "Tokyo",
-        seasonTag: "Late Autumn",
-        moodTags: ["Silence", "Texture"],
-        images: [
-          "https://images.unsplash.com/photo-1516962080544-e1163c804e15?q=80&w=800&auto=format&fit=crop",
-          "https://images.unsplash.com/photo-1507646227500-4d389b0012be?q=80&w=800&auto=format&fit=crop"
-        ]
-      },
-      artifact: {
-        title: "In Praise of Shadows",
-        subtitle: "Special Edition Reissue",
-        imagePlaceholder: "[Totemic Object Shot]",
-        link: "https://geniuslink.com/example"
-      }
+  // We query Sanity for the issue with the matching slug
+  // And we map the Sanity fields to fit your component structure
+  const query = `*[_type == "issue" && slug.current == $slug][0]{
+    "slug": slug.current,
+    issueNumber,
+    title,
+    "coverImage": coverImage.asset->url,
+    thesis,
+    signal {
+      studio,
+      context,
+      method,
+      geoTag,
+      seasonTag,
+      moodTags,
+      "images": images[].asset->url
+    },
+    artifact {
+      title,
+      subtitle,
+      "imagePlaceholder": image.asset->url,
+      link
     }
-  };
+  }`;
 
-  return db[slug] || null;
+  const data = await client.fetch(query, { slug });
+  return data || null;
 }
 
-// 3. The Dynamic Page Component
-// Next.js passes the 'params' object automatically to dynamic routes
+// 4. The Dynamic Page Component
 export default async function IssuePage({ params }: { params: { slug: string } }) {
   const { slug } = params;
   const data = await getIssueData(slug);
 
   if (!data) {
-    notFound(); // Returns the 404 page if issue doesn't exist
+    notFound(); // Returns the 404 page if issue doesn't exist in Sanity
   }
 
   return (
@@ -92,17 +95,16 @@ export default async function IssuePage({ params }: { params: { slug: string } }
         />
 
         {/* SIGNAL */}
-        {/* We map the flat CMS data to the specific structure the component needs */}
         <SignalAnalysis 
-          studioName={data.signal.studio}
-          context={data.signal.context}
-          method={data.signal.method}
-          images={data.signal.images}
+          studioName={data.signal?.studio || 'Unknown Studio'}
+          context={data.signal?.context}
+          method={data.signal?.method}
+          images={data.signal?.images || []}
           tags={[
-            { label: "City", value: data.signal.geoTag },
-            { label: "Season", value: data.signal.seasonTag },
-            ...data.signal.moodTags.map(tag => ({ label: "Mood", value: tag }))
-          ]}
+            { label: "City", value: data.signal?.geoTag },
+            { label: "Season", value: data.signal?.seasonTag },
+            ...(data.signal?.moodTags || []).map(tag => ({ label: "Mood", value: tag }))
+          ].filter(t => t.value)} // Filter out empty tags
         />
 
         {/* ARTIFACT */}
@@ -112,19 +114,24 @@ export default async function IssuePage({ params }: { params: { slug: string } }
           </span>
           <div className="bg-white p-12 max-w-lg w-full border border-accent-brown/10 shadow-xl">
              <div className="relative w-full aspect-[3/4] mb-8 bg-primary-bg">
-                <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic">
-                  {data.artifact.imagePlaceholder}
-                </div>
+                {/* Check if image exists, otherwise show title */}
+                {data.artifact?.imagePlaceholder ? (
+                   <img src={data.artifact.imagePlaceholder} alt={data.artifact.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic">
+                    Artifact Image
+                  </div>
+                )}
              </div>
              <h3 className="font-serif-title text-2xl text-brand-ink mb-2">
-               {data.artifact.title}
+               {data.artifact?.title}
              </h3>
              <p className="font-sans-body text-xs text-brand-ink/60 uppercase tracking-wider mb-8">
-               {data.artifact.subtitle}
+               {data.artifact?.subtitle}
              </p>
              <ArtifactButton 
                title="Acquire the Edition" 
-               link={data.artifact.link} 
+               link={data.artifact?.link || '#'} 
              />
           </div>
         </section>
