@@ -2,13 +2,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from 'next-sanity';
 
-// 1. Setup Sanity Client
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: 'production',
   apiVersion: '2024-01-01',
-  token: process.env.SANITY_API_WRITE_TOKEN, // Uses the new token we fixed
-  useCdn: false, // Must be false to see data immediately
+  token: process.env.SANITY_API_WRITE_TOKEN,
+  useCdn: false,
 });
 
 export async function POST(req: NextRequest) {
@@ -20,21 +19,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing Order ID' }, { status: 400 });
     }
 
-    // 2. The Wait Loop (Race Condition Fix)
-    // We try 3 times to find the user, waiting 1 second between tries.
-    // This gives the Webhook enough time to finish writing.
+    // 1. Find the Subscriber (The Wait Loop)
     let subscriber = null;
-    
     for (let i = 0; i < 5; i++) {
-        // Search for the user with this Order ID
         subscriber = await client.fetch(
             `*[_type == "subscriber" && lemonSqueezyOrderId == $orderId][0]`,
             { orderId: orderId.toString() }
         );
-
-        if (subscriber) break; // Found them! Exit loop.
-        
-        // Wait 1 second before trying again
+        if (subscriber) break; 
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -42,14 +34,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Subscriber not found yet' }, { status: 404 });
     }
 
-    // 3. Success! Return the user name to the frontend
+    // 2. NEW: Find the Latest Issue
+    // We fetch the single most recent issue based on publication date
+    const latestIssue = await client.fetch(
+      `*[_type == "issue"] | order(publishedAt desc)[0] {
+        title,
+        issueNumber,
+        "slug": slug.current
+      }`
+    );
+
+    // 3. Return Everything
     return NextResponse.json({
       success: true,
       user: {
         firstName: subscriber.name?.split(' ')[0] || 'Member',
         lastName: subscriber.name?.split(' ').slice(1).join(' ') || '',
         email: subscriber.email
-      }
+      },
+      // Send the issue data to the frontend
+      latestIssue: latestIssue || { issueNumber: '00', slug: 'latest' } // Fallback just in case
     });
 
   } catch (err: any) {

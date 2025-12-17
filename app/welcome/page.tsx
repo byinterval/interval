@@ -54,8 +54,10 @@ function WelcomeFlow() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [statusMessage, setStatusMessage] = useState('Verifying Membership...');
   const [userData, setUserData] = useState({ firstName: 'Member', fullName: '' });
+  // NEW: State for the dynamic issue button
+  const [latestIssue, setLatestIssue] = useState({ number: '...', slug: '' });
 
-useEffect(() => {
+  useEffect(() => {
     // 1. FIND THE ID: Check every possible format Lemon Squeezy uses
     const orderId = 
       searchParams.get('order') ||            
@@ -96,10 +98,20 @@ useEffect(() => {
         
         // Success: Update the UI
         timers.push(setTimeout(() => {
+          // Update User Data
           setUserData({ 
             firstName: data.user.firstName, 
             fullName: `${data.user.firstName} ${data.user.lastName || ''}`.trim() 
           });
+
+          // Update Issue Data (NEW)
+          if (data.latestIssue) {
+            setLatestIssue({ 
+              number: data.latestIssue.issueNumber, 
+              slug: data.latestIssue.slug 
+            });
+          }
+
           setStatus('success');
         }, 3200));
 
@@ -167,10 +179,11 @@ useEffect(() => {
 
         <div className="flex flex-col items-center space-y-6">
           <Link 
-            href="/issues/latest" 
+            // Dynamic link to the latest issue
+            href={latestIssue.slug ? `/issues/${latestIssue.slug}` : '/issues/latest'} 
             className="bg-[#1A1A1A] text-[#FDFBF7] px-8 py-4 font-mono text-sm uppercase tracking-wider hover:bg-gray-800 transition-colors w-full md:w-auto text-center"
           >
-            Enter Issue 048
+            Enter Issue {latestIssue.number}
           </Link>
           <Link 
             href="/registry" 
