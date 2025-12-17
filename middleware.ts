@@ -17,16 +17,15 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// === THE FIX: The Matcher Configuration ===
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes) <--- CRITICAL: This lets the webhook pass through
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match all paths EXCEPT:
+     * - api
+     * - _next
+     * - favicon
+     * - welcome (ADD THIS so middleware never touches the success page)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|welcome).*)',
   ],
 }
