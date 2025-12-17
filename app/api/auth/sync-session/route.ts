@@ -1,13 +1,14 @@
+// app/api/auth/sync-session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createClient } from 'next-sanity';
 
+// 1. Setup Sanity Client
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: 'production',
   apiVersion: '2024-01-01',
-  useCdn: false,
-  token: process.env.SANITY_API_READ_TOKEN,
+  token: process.env.SANITY_API_WRITE_TOKEN, // Uses the new token we fixed
+  useCdn: false, // Must be false to see data immediately
 });
 
 export async function POST(req: NextRequest) {
@@ -19,47 +20,40 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing Order ID' }, { status: 400 });
     }
 
-    // 1. The Race Condition Check: Look for the user in Sanity
-    // Retry logic could be added here if the webhook is slightly delayed
-    const query = `*[_type == "subscriber" && lemonSqueezyOrderId == $orderId][0]`;
-    const subscriber = await client.fetch(query, { orderId });
+    // 2. The Wait Loop (Race Condition Fix)
+    // We try 3 times to find the user, waiting 1 second between tries.
+    // This gives the Webhook enough time to finish writing.
+    let subscriber = null;
+    
+    for (let i = 0; i < 5; i++) {
+        // Search for the user with this Order ID
+        subscriber = await client.fetch(
+            `*[_type == "subscriber" && lemonSqueezyOrderId == $orderId][0]`,
+            { orderId: orderId.toString() }
+        );
 
-    if (!subscriber) {
-      // Edge Case: If Webhook hasn't fired yet, verify directly with Lemon Squeezy API
-      // This ensures the "3-second animation" never fails for a valid customer.
-      const verifyRes = await fetch(`https://api.lemonsqueezy.com/v1/orders/${orderId}`, {
-        headers: { Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY}` }
-      });
-      
-      if (!verifyRes.ok) {
-         return NextResponse.json({ message: 'Invalid Order' }, { status: 401 });
-      }
-      // If valid, we allow the session provisionally (or trigger a manual sync here)
+        if (subscriber) break; // Found them! Exit loop.
+        
+        // Wait 1 second before trying again
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    // 2. The "Access Granted" Action: Set the HttpOnly Cookie
-    const cookieStore = await cookies();
-    
-    // Set the "interval_session" cookie as requested in QA criteria
-    cookieStore.set('interval_session', 'true', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 30, // 30 Days
-      path: '/',
-    });
+    if (!subscriber) {
+      return NextResponse.json({ message: 'Subscriber not found yet' }, { status: 404 });
+    }
 
-    // 3. Return Data for the "Personal Welcome" UI
+    // 3. Success! Return the user name to the frontend
     return NextResponse.json({
       success: true,
       user: {
-        firstName: subscriber?.name?.split(' ')[0] || 'Member',
-        cohort: '2026',
-        status: 'active'
+        firstName: subscriber.name?.split(' ')[0] || 'Member',
+        lastName: subscriber.name?.split(' ').slice(1).join(' ') || '',
+        email: subscriber.email
       }
     });
 
-  } catch (error) {
-    console.error('[Sync Error]', error);
-    return NextResponse.json({ message: 'Handshake failed' }, { status: 500 });
+  } catch (err: any) {
+    console.error('Sync Error:', err);
+    return NextResponse.json({ message: 'Server Error' }, { status: 500 });
   }
 }
