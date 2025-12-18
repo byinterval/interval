@@ -1,6 +1,7 @@
 // app/api/auth/sync-session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from 'next-sanity';
+import { cookies } from 'next/headers'; // Import cookies
 
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
@@ -19,7 +20,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing Order ID' }, { status: 400 });
     }
 
-    // 1. Find the Subscriber (The Wait Loop)
+    // 1. Find the Subscriber
+    // We retry a few times just in case the webhook is a millisecond slow
     let subscriber = null;
     for (let i = 0; i < 5; i++) {
         subscriber = await client.fetch(
@@ -34,8 +36,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Subscriber not found yet' }, { status: 404 });
     }
 
-    // 2. NEW: Find the Latest Issue
-    // We fetch the single most recent issue based on publication date
+    // 2. NEW: Set the Session Cookie
+    // This is the "Ticket" that keeps them logged in on other pages.
+    const cookieStore = await cookies();
+    
+    // We set a cookie named 'interval_session' (or whatever your auth checks for)
+    // We'll set a standard "is_member" flag too just to be safe.
+    cookieStore.set('interval_session', subscriber._id, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30 // 30 Days
+    });
+
+    // 3. Find the Latest Issue
     const latestIssue = await client.fetch(
       `*[_type == "issue"] | order(publishedAt desc)[0] {
         title,
@@ -44,7 +58,7 @@ export async function POST(req: NextRequest) {
       }`
     );
 
-    // 3. Return Everything
+    // 4. Return Success
     return NextResponse.json({
       success: true,
       user: {
@@ -52,8 +66,7 @@ export async function POST(req: NextRequest) {
         lastName: subscriber.name?.split(' ').slice(1).join(' ') || '',
         email: subscriber.email
       },
-      // Send the issue data to the frontend
-      latestIssue: latestIssue || { issueNumber: '00', slug: 'latest' } // Fallback just in case
+      latestIssue: latestIssue || { issueNumber: '00', slug: 'latest' }
     });
 
   } catch (err: any) {

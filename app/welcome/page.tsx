@@ -103,8 +103,14 @@ function WelcomeFlow() {
             firstName: data.user.firstName, 
             fullName: `${data.user.firstName} ${data.user.lastName || ''}`.trim() 
           });
+          // Save proof of membership to LocalStorage for the Nav Bar / UI
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('interval_membership_status', 'active');
+            localStorage.setItem('interval_user_name', data.user.firstName);
+            // Dispatch event so the Nav bar updates immediately without reload
+            window.dispatchEvent(new Event('storage'));
+          }
 
-          // Update Issue Data (NEW)
           if (data.latestIssue) {
             setLatestIssue({ 
               number: data.latestIssue.issueNumber, 
