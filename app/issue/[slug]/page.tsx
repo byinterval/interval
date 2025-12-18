@@ -38,6 +38,7 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
+        // Robust Note Fetching
         "note": coalesce(
           description, 
           curatorNote, 
@@ -46,7 +47,7 @@ async function getIssueData(slug: string) {
           pt::text(description), 
           "The object speaks for itself."
         ),
-        // Image Dragnet (Checks every possible name)
+        // Robust Image Fetching
         "imagePlaceholder": coalesce(
             image.asset->url,
             coverImage.asset->url,
@@ -112,12 +113,10 @@ export default async function IssuePage(props: any) {
             III. The Artifact
           </span>
 
-          {/* THE CARD CONTAINER */}
-          {/* We use flex-col and overflow-hidden to trap the content */}
+          {/* THE CARD */}
           <div className="bg-white w-full max-w-[400px] shadow-2xl flex flex-col overflow-hidden">
              
-             {/* BLOCK A: The Image Header */}
-             {/* Fixed Height: 450px. No positioning absolute. */}
+             {/* BLOCK A: IMAGE (Locked to 450px height) */}
              <div className="w-full h-[450px] bg-[#EAEAEA] flex-shrink-0">
                 {data.artifact?.imagePlaceholder ? (
                    <img 
@@ -126,28 +125,24 @@ export default async function IssuePage(props: any) {
                      className="w-full h-full object-cover block"
                    />
                 ) : (
-                   /* Empty State if no image found */
                    <div className="w-full h-full bg-gray-200" />
                 )}
              </div>
 
-             {/* BLOCK B: The Text Content */}
+             {/* BLOCK B: TEXT & BUTTON */}
              <div className="p-10 flex flex-col items-center text-center bg-white">
                  
-                 <span className="font-sans-body text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-4">
-                   Ritual Object
-                 </span>
-
+                 {/* Title */}
                  <h3 className="font-serif-title text-2xl text-gray-900 mb-2">
                    {data.artifact?.title || 'Untitled'}
                  </h3>
 
+                 {/* Note (Curator Note) */}
                  <p className="font-sans-body text-xs text-gray-500 leading-relaxed mb-8 max-w-[250px]">
-                   {data.artifact?.note || data.artifact?.subtitle || "A souvenir of meaning."}
+                   {data.artifact?.note || data.artifact?.subtitle}
                  </p>
 
-                 <div className="w-12 h-px bg-gray-200 mb-8"></div>
-
+                 {/* Button */}
                  <ArtifactButton 
                    title="Acquire the Edition" 
                    link={data.artifact?.link || '#'} 
