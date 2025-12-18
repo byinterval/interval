@@ -38,14 +38,14 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // Robust Note Fetching
+        // We use pt::text to flatten any Rich Text into a simple string
         "note": coalesce(
           description, 
           curatorNote, 
           note, 
           pt::text(body), 
           pt::text(description), 
-          ""
+          "The object speaks for itself."
         ),
         "imagePlaceholder": image.asset->url,
         link
@@ -100,64 +100,59 @@ export default async function IssuePage(props: any) {
         />
 
         {/* ARTIFACT SECTION */}
-        <section className="py-32 bg-secondary-bg flex justify-center px-6">
+        <section className="py-24 bg-[#E5E5E5] flex flex-col items-center justify-center min-h-screen px-6">
           
-          {/* THE CARD CONTAINER */}
-          {/* We use flex-col to force top-to-bottom stacking */}
-          <div className="bg-white max-w-md w-full shadow-2xl overflow-hidden flex flex-col">
-             
-             {/* 1. HEADER (Top of Card) */}
-             <div className="py-8 text-center border-b border-gray-100">
-               <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em]">
-                  III. The Artifact
-               </span>
-             </div>
+          <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em] mb-8 block opacity-60">
+            III. THE ARTIFACT
+          </span>
 
-             {/* 2. IMAGE (Middle Block) */}
-             {/* We use a standard img tag (no absolute) to force the card to stretch */}
-             <div className="w-full bg-gray-50">
-                {data.artifact?.imagePlaceholder ? (
-                   <img 
-                     src={data.artifact.imagePlaceholder} 
-                     alt={data.artifact.title} 
-                     className="w-full h-auto object-cover" 
-                     style={{ display: 'block' }} // Removes tiny gap at bottom of images
-                   />
-                ) : (
-                  <div className="aspect-[3/4] flex items-center justify-center text-gray-300 italic">
-                    No Image Available
-                  </div>
-                )}
-             </div>
-
-             {/* 3. TEXT CONTENT (Bottom Block) */}
-             <div className="p-10 flex flex-col items-center text-center bg-white z-10">
-                 
-                 <h3 className="font-serif-title text-2xl text-brand-ink mb-2">
-                   {data.artifact?.title || 'Untitled Artifact'}
-                 </h3>
-                 
-                 <p className="font-sans-body text-[10px] text-brand-ink/50 uppercase tracking-widest mb-6">
-                   {data.artifact?.subtitle}
-                 </p>
-
-                 {/* The Note */}
-                 {data.artifact?.note && (
-                   <div className="mb-8 font-serif-title text-sm leading-relaxed text-gray-600 max-w-xs italic">
-                      "{data.artifact.note}"
-                   </div>
-                 )}
-
-                 {/* The Button */}
-                 <div className="w-full pt-6 border-t border-gray-100 flex justify-center">
-                     <ArtifactButton 
-                       title="Acquire the Edition" 
-                       link={data.artifact?.link || '#'} 
-                     />
+          {/* THE CARD: A single rigidly defined box */}
+          <article className="bg-white w-full max-w-[420px] shadow-2xl flex flex-col">
+            
+            {/* A. The Image (Top Half) */}
+            <div className="w-full h-[500px] bg-gray-100 relative">
+               {data.artifact?.imagePlaceholder ? (
+                  <img 
+                    src={data.artifact.imagePlaceholder} 
+                    alt={data.artifact.title} 
+                    className="w-full h-full object-cover block" 
+                  />
+               ) : (
+                 <div className="w-full h-full flex items-center justify-center text-gray-300 italic">
+                   No Image Found
                  </div>
-             </div>
+               )}
+            </div>
 
-          </div>
+            {/* B. The Content (Bottom Half) */}
+            <div className="p-10 flex flex-col items-center text-center">
+                
+                {/* Title */}
+                <h3 className="font-serif-title text-2xl text-black mb-2">
+                  {data.artifact?.title || 'Untitled'}
+                </h3>
+                
+                {/* Subtitle */}
+                <p className="font-sans-body text-[10px] text-gray-400 uppercase tracking-widest mb-8">
+                  {data.artifact?.subtitle}
+                </p>
+
+                {/* The Note (With a small divider above/below to verify it renders) */}
+                <div className="w-8 h-px bg-gray-200 mb-6"></div>
+                <div className="font-serif-title text-sm leading-relaxed text-gray-600 mb-6 max-w-[280px]">
+                   "{data.artifact?.note}"
+                </div>
+                <div className="w-8 h-px bg-gray-200 mb-8"></div>
+
+                {/* Button */}
+                <ArtifactButton 
+                  title="Acquire the Edition" 
+                  link={data.artifact?.link || '#'} 
+                />
+            </div>
+
+          </article>
+
         </section>
 
       </main>
