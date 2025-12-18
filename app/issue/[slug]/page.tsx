@@ -15,38 +15,56 @@ const client = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 });
 
-// 2. Data Fetching Logic
-async function getIssueData(slug: string) {
+// 2. Define Data Shape
+interface IssueData {
+  slug: string;
+  issueNumber: string;
+  title: string;
+  coverImage: string | null;
+  thesis: string;
+  signal: {
+    studio: string;
+    context: string;
+    method: string;
+    geoTag: string;
+    seasonTag: string;
+    moodTags: string[];
+    images: string[];
+  };
+  artifact: {
+    title: string;
+    subtitle: string;
+    note: string; // <--- NEW FIELD
+    imagePlaceholder: string | null; 
+    link: string;
+  };
+}
+
+// 3. Data Fetching
+async function getIssueData(slug: string): Promise<IssueData | null> {
   try {
-    // CRITICAL FIX: Mapping the *Actual* Sanity fields to our Component props
-    // The "->" arrow tells Sanity to follow the reference and get the data inside.
     const query = `*[_type == "issue" && slug.current == $slug][0]{
       "slug": slug.current,
       "issueNumber": coalesce(issueNumber, "00"),
       "title": coalesce(title, "Untitled"),
       "coverImage": coverImage.asset->url,
+      "thesis": coalesce(thesisBody, thesis, ""),
       
-      // Map 'thesisBody' (DB) to 'thesis' (Component)
-      "thesis": coalesce(thesisBody, ""),
-      
-      // Construct the Signal object from flat fields
       "signal": {
         "studio": coalesce(signalStudio, "Unknown Studio"),
         "context": coalesce(signalContext, ""),
         "method": coalesce(signalMethod, ""),
         "images": coalesce(signalImages[].asset->url, []),
-        
-        // Expand the Tag References
-        // We try 'title', 'label', or 'name' just to be safe
         "geoTag": coalesce(cityTag->title, cityTag->label, cityTag->name, "City"),
         "seasonTag": coalesce(seasonTag->title, seasonTag->label, seasonTag->name, "Season"),
         "moodTags": moodTags[]->title
       },
 
-      // Expand the Artifact Reference
       "artifact": linkedArtifact->{
         title,
         subtitle,
+        // We look for common names for the note field
+        "note": coalesce(description, note, body, text, curatorNote, ""),
         "imagePlaceholder": image.asset->url,
         link
       }
@@ -60,12 +78,10 @@ async function getIssueData(slug: string) {
   }
 }
 
-// 3. The Page Component
+// 4. The Page Component
 export default async function IssuePage(props: any) {
-  // Handle Next.js 15 Params
   const params = await Promise.resolve(props.params);
   const { slug } = params;
-
   const data = await getIssueData(slug);
 
   if (!data) {
@@ -108,27 +124,40 @@ export default async function IssuePage(props: any) {
           </span>
           
           <div className="bg-white p-12 max-w-lg w-full border border-accent-brown/10 shadow-xl">
+             
+             {/* 1. Image */}
              <div className="relative w-full aspect-[3/4] mb-8 bg-primary-bg">
-                {/* Safe Image Check */}
                 {data.artifact?.imagePlaceholder ? (
                    <img src={data.artifact.imagePlaceholder} alt={data.artifact.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic bg-gray-50">
-                    Artifact Image
+                    Image Pending
                   </div>
                 )}
              </div>
              
+             {/* 2. Titles */}
              <h3 className="font-serif-title text-2xl text-brand-ink mb-2">
-               {data.artifact?.title || 'Coming Soon'}
+               {data.artifact?.title || 'Untitled Artifact'}
              </h3>
-             <p className="font-sans-body text-xs text-brand-ink/60 uppercase tracking-wider mb-8">
+             <p className="font-sans-body text-xs text-brand-ink/60 uppercase tracking-wider mb-6">
                {data.artifact?.subtitle}
              </p>
-             <ArtifactButton 
-               title="Acquire the Edition" 
-               link={data.artifact?.link || '#'} 
-             />
+
+             {/* 3. The Curator Note (Now Visible) */}
+             {data.artifact?.note && (
+                <div className="mb-8 text-brand-ink/80 font-serif-title text-sm leading-relaxed px-4">
+                  {data.artifact.note}
+                </div>
+             )}
+
+             {/* 4. Button */}
+             <div className="pt-4 border-t border-accent-brown/10 w-full flex justify-center">
+                 <ArtifactButton 
+                   title="Acquire the Edition" 
+                   link={data.artifact?.link || '#'} 
+                 />
+             </div>
           </div>
         </section>
 
