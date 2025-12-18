@@ -4,14 +4,18 @@ import { useState, useEffect } from 'react';
 export function useMember() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // NEW: State to hold the user ID
+  const [id, setId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {
-      // 1. Check the LocalStorage flag we set on the Welcome Page
+      // 1. Check the LocalStorage flags
       const localStatus = localStorage.getItem('interval_membership_status');
+      const userId = localStorage.getItem('interval_user_id'); // We will look for this
       
-      // 2. If it says 'active', we are logged in!
+      // 2. Update State
       setIsAuthenticated(localStatus === 'active');
+      setId(userId);
       setIsLoading(false);
     };
 
@@ -26,6 +30,7 @@ export function useMember() {
   return { 
     isAuthenticated, 
     isLoading, 
-    login: () => {} // Placeholder
+    id, // <--- This was the missing property causing the build error
+    login: () => {} 
   };
 }
