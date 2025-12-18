@@ -38,15 +38,14 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // DRAGNET: We try every possible name for the note field.
-        // pt::text(body) converts Rich Text blocks to plain strings.
+        // Robust Note Fetching
         "note": coalesce(
           description, 
           curatorNote, 
           note, 
           pt::text(body), 
-          pt::text(description),
-          "Note pending..."
+          pt::text(description), 
+          ""
         ),
         "imagePlaceholder": image.asset->url,
         link
@@ -101,31 +100,39 @@ export default async function IssuePage(props: any) {
         />
 
         {/* ARTIFACT SECTION */}
-        <section className="py-32 bg-secondary-bg flex flex-col items-center justify-center text-center px-6">
-          <span className="font-sans-body text-xs text-accent-brown uppercase tracking-[0.2em] mb-8 block">
-            III. The Artifact
-          </span>
+        <section className="py-32 bg-secondary-bg flex justify-center px-6">
           
-          {/* THE UNIFIED CARD: bg-white contains EVERYTHING */}
-          <div className="bg-white max-w-lg w-full shadow-2xl border border-accent-brown/5 overflow-hidden">
+          {/* THE CARD CONTAINER */}
+          {/* We use flex-col to force top-to-bottom stacking */}
+          <div className="bg-white max-w-md w-full shadow-2xl overflow-hidden flex flex-col">
              
-             {/* 1. Image (Flush at top, no padding around it) */}
-             <div className="relative w-full aspect-[3/4] bg-gray-100">
+             {/* 1. HEADER (Top of Card) */}
+             <div className="py-8 text-center border-b border-gray-100">
+               <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em]">
+                  III. The Artifact
+               </span>
+             </div>
+
+             {/* 2. IMAGE (Middle Block) */}
+             {/* We use a standard img tag (no absolute) to force the card to stretch */}
+             <div className="w-full bg-gray-50">
                 {data.artifact?.imagePlaceholder ? (
                    <img 
                      src={data.artifact.imagePlaceholder} 
                      alt={data.artifact.title} 
-                     className="absolute inset-0 w-full h-full object-cover" 
+                     className="w-full h-auto object-cover" 
+                     style={{ display: 'block' }} // Removes tiny gap at bottom of images
                    />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic">
-                    Artifact Image
+                  <div className="aspect-[3/4] flex items-center justify-center text-gray-300 italic">
+                    No Image Available
                   </div>
                 )}
              </div>
-             
-             {/* 2. Content Container (Padding is only here) */}
-             <div className="p-10 md:p-12 flex flex-col items-center">
+
+             {/* 3. TEXT CONTENT (Bottom Block) */}
+             <div className="p-10 flex flex-col items-center text-center bg-white z-10">
+                 
                  <h3 className="font-serif-title text-2xl text-brand-ink mb-2">
                    {data.artifact?.title || 'Untitled Artifact'}
                  </h3>
@@ -134,19 +141,22 @@ export default async function IssuePage(props: any) {
                    {data.artifact?.subtitle}
                  </p>
 
-                 {/* 3. The Note (Now robustly fetched) */}
-                 <div className="mb-8 max-w-sm text-brand-ink/80 font-serif-title text-sm leading-relaxed italic">
-                    "{data.artifact?.note}"
-                 </div>
+                 {/* The Note */}
+                 {data.artifact?.note && (
+                   <div className="mb-8 font-serif-title text-sm leading-relaxed text-gray-600 max-w-xs italic">
+                      "{data.artifact.note}"
+                   </div>
+                 )}
 
-                 {/* 4. Button */}
-                 <div className="w-full border-t border-accent-brown/10 pt-8 mt-2">
+                 {/* The Button */}
+                 <div className="w-full pt-6 border-t border-gray-100 flex justify-center">
                      <ArtifactButton 
                        title="Acquire the Edition" 
                        link={data.artifact?.link || '#'} 
                      />
                  </div>
              </div>
+
           </div>
         </section>
 
