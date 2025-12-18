@@ -38,7 +38,7 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // We use pt::text to flatten any Rich Text into a simple string
+        // Text Dragnet
         "note": coalesce(
           description, 
           curatorNote, 
@@ -47,7 +47,14 @@ async function getIssueData(slug: string) {
           pt::text(description), 
           "The object speaks for itself."
         ),
-        "imagePlaceholder": image.asset->url,
+        // IMAGE DRAGNET: Check all possible names for the image
+        "imagePlaceholder": coalesce(
+            image.asset->url,
+            coverImage.asset->url,
+            mainImage.asset->url,
+            photo.asset->url,
+            asset->url
+        ),
         link
       }
     }`;
@@ -111,16 +118,13 @@ export default async function IssuePage(props: any) {
              
              {/* 1. TOP HALF: The Image (Edge-to-Edge) */}
              <div className="w-full aspect-square bg-[#EAEAEA] relative">
-                {data.artifact?.imagePlaceholder ? (
+                {/* Logic: Only render IMG if URL exists. No text fallback. */}
+                {data.artifact?.imagePlaceholder && (
                    <img 
                      src={data.artifact.imagePlaceholder} 
                      alt={data.artifact.title} 
                      className="absolute inset-0 w-full h-full object-cover" 
                    />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-serif-title italic">
-                    [Totemic Object]
-                  </div>
                 )}
              </div>
 
