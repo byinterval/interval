@@ -1,74 +1,31 @@
+'use client';
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation'; // Import this to listen for page changes
-
-interface Member {
-  id: string;
-  email: string;
-  isActive: boolean;
-  role: 'member' | 'guest' | 'public';
-}
 
 export function useMember() {
-  const [member, setMember] = useState<Member | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const pathname = usePathname(); // This triggers a re-render on navigation
 
-  const checkAuth = () => {
-    // 1. Check for Memberful (Active Member)
-    const memberfulCookie = document.cookie.includes('memberful_session');
-    
-    // 2. Check for Guest Session (Hospitality)
-    const guestCookie = document.cookie.includes('interval_guest_session');
-
-    if (memberfulCookie) {
-      setMember({
-        id: "member-id", 
-        email: "member@theinterval.com",
-        isActive: true,
-        role: 'member'
-      });
-    } else if (guestCookie) {
-      setMember({
-        id: "guest-session",
-        email: "guest@partner.com",
-        isActive: true,
-        role: 'guest'
-      });
-    } else {
-      setMember(null);
-    }
-    setIsLoading(false);
-  };
-
-  // Re-run auth check whenever the path changes (e.g. redirect from /login -> /atlas)
   useEffect(() => {
+    const checkAuth = () => {
+      // 1. Check the LocalStorage flag we set on the Welcome Page
+      const localStatus = localStorage.getItem('interval_membership_status');
+      
+      // 2. If it says 'active', we are logged in!
+      setIsAuthenticated(localStatus === 'active');
+      setIsLoading(false);
+    };
+
+    // Run immediately on mount
     checkAuth();
-  }, [pathname]);
 
-  const safeMemberfulAction = (action: (m: any) => void) => {
-    // @ts-ignore
-    if (typeof window !== 'undefined' && window.Memberful) {
-      // @ts-ignore
-      action(window.Memberful);
-    }
-  };
+    // Listen for updates (in case we log in/out in another tab)
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
 
-  return {
-    id: member?.id,
-    isAuthenticated: !!member,
-    role: member?.role || 'public',
-    email: member?.email,
-    isLoading,
-    isActive: member?.isActive,
-    
-    login: () => window.location.href = "/login",
-    logout: () => {
-      // Clear Guest Cookie
-      document.cookie = "interval_guest_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      safeMemberfulAction((m) => m.signout());
-      window.location.href = "/";
-    },
-    openBilling: () => safeMemberfulAction((m) => m.openUpdateCard()),
-    openSubscriptions: () => safeMemberfulAction((m) => m.openSubscriptions()),
+  return { 
+    isAuthenticated, 
+    isLoading, 
+    login: () => {} // Placeholder
   };
 }
