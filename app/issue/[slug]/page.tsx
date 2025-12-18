@@ -6,12 +6,13 @@ import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
-// 1. Setup Sanity Client
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: 'production',
   apiVersion: '2024-01-01',
-  useCdn: false, 
+  useCdn: false,
+  // ADD THIS LINE:
+  token: process.env.SANITY_API_WRITE_TOKEN, 
 });
 
 // 2. Define Data Shape
