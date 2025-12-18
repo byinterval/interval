@@ -47,7 +47,7 @@ async function getIssueData(slug: string) {
           pt::text(description), 
           "The object speaks for itself."
         ),
-        // IMAGE DRAGNET: Check all possible names for the image
+        // IMAGE DRAGNET: Check all possible names
         "imagePlaceholder": coalesce(
             image.asset->url,
             coverImage.asset->url,
@@ -113,12 +113,13 @@ export default async function IssuePage(props: any) {
             III. The Artifact
           </span>
 
-          {/* THE CARD: White box, Shadow, Centered */}
-          <div className="bg-white max-w-[400px] w-full shadow-xl border border-white/50 overflow-hidden flex flex-col">
+          {/* THE CARD */}
+          {/* Defined Width, White Background, Shadow */}
+          <div className="bg-white w-full max-w-[420px] shadow-2xl flex flex-col">
              
-             {/* 1. TOP HALF: The Image (Edge-to-Edge) */}
-             <div className="w-full aspect-square bg-[#EAEAEA] relative">
-                {/* Logic: Only render IMG if URL exists. No text fallback. */}
+             {/* BLOCK A: THE IMAGE CONTAINER (The Grey Block) */}
+             {/* We use aspect-square (1:1) to force a square box at the top */}
+             <div className="w-full aspect-square bg-[#EAEAEA] relative overflow-hidden">
                 {data.artifact?.imagePlaceholder && (
                    <img 
                      src={data.artifact.imagePlaceholder} 
@@ -126,9 +127,10 @@ export default async function IssuePage(props: any) {
                      className="absolute inset-0 w-full h-full object-cover" 
                    />
                 )}
+                {/* No text fallback here, just empty grey if no image */}
              </div>
 
-             {/* 2. BOTTOM HALF: The Label (Padding Only Here) */}
+             {/* BLOCK B: THE TEXT CONTENT */}
              <div className="p-10 flex flex-col items-center text-center">
                  
                  {/* Metadata */}
