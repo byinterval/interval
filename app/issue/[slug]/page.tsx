@@ -15,33 +15,8 @@ const client = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 });
 
-// 2. Define Data Shape
-interface IssueData {
-  slug: string;
-  issueNumber: string;
-  title: string;
-  coverImage: string | null;
-  thesis: string;
-  signal: {
-    studio: string;
-    context: string;
-    method: string;
-    geoTag: string;
-    seasonTag: string;
-    moodTags: string[];
-    images: string[];
-  };
-  artifact: {
-    title: string;
-    subtitle: string;
-    note: string; // <--- NEW FIELD
-    imagePlaceholder: string | null; 
-    link: string;
-  };
-}
-
-// 3. Data Fetching
-async function getIssueData(slug: string): Promise<IssueData | null> {
+// 2. Data Fetching
+async function getIssueData(slug: string) {
   try {
     const query = `*[_type == "issue" && slug.current == $slug][0]{
       "slug": slug.current,
@@ -63,8 +38,16 @@ async function getIssueData(slug: string): Promise<IssueData | null> {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // We look for common names for the note field
-        "note": coalesce(description, note, body, text, curatorNote, ""),
+        // DRAGNET: We try every possible name for the note field.
+        // pt::text(body) converts Rich Text blocks to plain strings.
+        "note": coalesce(
+          description, 
+          curatorNote, 
+          note, 
+          pt::text(body), 
+          pt::text(description),
+          "Note pending..."
+        ),
         "imagePlaceholder": image.asset->url,
         link
       }
@@ -78,7 +61,7 @@ async function getIssueData(slug: string): Promise<IssueData | null> {
   }
 }
 
-// 4. The Page Component
+// 3. The Page Component
 export default async function IssuePage(props: any) {
   const params = await Promise.resolve(props.params);
   const { slug } = params;
@@ -117,46 +100,52 @@ export default async function IssuePage(props: any) {
           ].filter(t => t.value)} 
         />
 
-        {/* ARTIFACT */}
+        {/* ARTIFACT SECTION */}
         <section className="py-32 bg-secondary-bg flex flex-col items-center justify-center text-center px-6">
           <span className="font-sans-body text-xs text-accent-brown uppercase tracking-[0.2em] mb-8 block">
             III. The Artifact
           </span>
           
-          <div className="bg-white p-12 max-w-lg w-full border border-accent-brown/10 shadow-xl">
+          {/* THE UNIFIED CARD: bg-white contains EVERYTHING */}
+          <div className="bg-white max-w-lg w-full shadow-2xl border border-accent-brown/5 overflow-hidden">
              
-             {/* 1. Image */}
-             <div className="relative w-full aspect-[3/4] mb-8 bg-primary-bg">
+             {/* 1. Image (Flush at top, no padding around it) */}
+             <div className="relative w-full aspect-[3/4] bg-gray-100">
                 {data.artifact?.imagePlaceholder ? (
-                   <img src={data.artifact.imagePlaceholder} alt={data.artifact.title} className="w-full h-full object-cover" />
+                   <img 
+                     src={data.artifact.imagePlaceholder} 
+                     alt={data.artifact.title} 
+                     className="absolute inset-0 w-full h-full object-cover" 
+                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic bg-gray-50">
-                    Image Pending
+                  <div className="absolute inset-0 flex items-center justify-center text-accent-brown/30 font-serif-title italic">
+                    Artifact Image
                   </div>
                 )}
              </div>
              
-             {/* 2. Titles */}
-             <h3 className="font-serif-title text-2xl text-brand-ink mb-2">
-               {data.artifact?.title || 'Untitled Artifact'}
-             </h3>
-             <p className="font-sans-body text-xs text-brand-ink/60 uppercase tracking-wider mb-6">
-               {data.artifact?.subtitle}
-             </p>
+             {/* 2. Content Container (Padding is only here) */}
+             <div className="p-10 md:p-12 flex flex-col items-center">
+                 <h3 className="font-serif-title text-2xl text-brand-ink mb-2">
+                   {data.artifact?.title || 'Untitled Artifact'}
+                 </h3>
+                 
+                 <p className="font-sans-body text-[10px] text-brand-ink/50 uppercase tracking-widest mb-6">
+                   {data.artifact?.subtitle}
+                 </p>
 
-             {/* 3. The Curator Note (Now Visible) */}
-             {data.artifact?.note && (
-                <div className="mb-8 text-brand-ink/80 font-serif-title text-sm leading-relaxed px-4">
-                  {data.artifact.note}
-                </div>
-             )}
+                 {/* 3. The Note (Now robustly fetched) */}
+                 <div className="mb-8 max-w-sm text-brand-ink/80 font-serif-title text-sm leading-relaxed italic">
+                    "{data.artifact?.note}"
+                 </div>
 
-             {/* 4. Button */}
-             <div className="pt-4 border-t border-accent-brown/10 w-full flex justify-center">
-                 <ArtifactButton 
-                   title="Acquire the Edition" 
-                   link={data.artifact?.link || '#'} 
-                 />
+                 {/* 4. Button */}
+                 <div className="w-full border-t border-accent-brown/10 pt-8 mt-2">
+                     <ArtifactButton 
+                       title="Acquire the Edition" 
+                       link={data.artifact?.link || '#'} 
+                     />
+                 </div>
              </div>
           </div>
         </section>
