@@ -99,59 +99,59 @@ export default async function IssuePage(props: any) {
           ].filter(t => t.value)} 
         />
 
-        {/* ARTIFACT SECTION */}
-        <section className="py-24 bg-[#E5E5E5] flex flex-col items-center justify-center min-h-screen px-6">
+        {/* ARTIFACT SECTION - The Museum Placard */}
+        <section className="py-32 bg-[#F5F5F0] flex flex-col items-center justify-center min-h-[90vh] px-6">
           
-          <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em] mb-8 block opacity-60">
-            III. THE ARTIFACT
+          <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em] mb-12 opacity-50">
+            III. The Artifact
           </span>
 
-          {/* THE CARD: A single rigidly defined box */}
-          <article className="bg-white w-full max-w-[420px] shadow-2xl flex flex-col">
-            
-            {/* A. The Image (Top Half) */}
-            <div className="w-full h-[500px] bg-gray-100 relative">
-               {data.artifact?.imagePlaceholder ? (
-                  <img 
-                    src={data.artifact.imagePlaceholder} 
-                    alt={data.artifact.title} 
-                    className="w-full h-full object-cover block" 
-                  />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center text-gray-300 italic">
-                   No Image Found
-                 </div>
-               )}
-            </div>
+          {/* THE CARD: White box, Shadow, Centered */}
+          <div className="bg-white max-w-[400px] w-full shadow-xl border border-white/50 overflow-hidden flex flex-col">
+             
+             {/* 1. TOP HALF: The Image (Edge-to-Edge) */}
+             <div className="w-full aspect-square bg-[#EAEAEA] relative">
+                {data.artifact?.imagePlaceholder ? (
+                   <img 
+                     src={data.artifact.imagePlaceholder} 
+                     alt={data.artifact.title} 
+                     className="absolute inset-0 w-full h-full object-cover" 
+                   />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 font-serif-title italic">
+                    [Totemic Object]
+                  </div>
+                )}
+             </div>
 
-            {/* B. The Content (Bottom Half) */}
-            <div className="p-10 flex flex-col items-center text-center">
-                
-                {/* Title */}
-                <h3 className="font-serif-title text-2xl text-black mb-2">
-                  {data.artifact?.title || 'Untitled'}
-                </h3>
-                
-                {/* Subtitle */}
-                <p className="font-sans-body text-[10px] text-gray-400 uppercase tracking-widest mb-8">
-                  {data.artifact?.subtitle}
-                </p>
+             {/* 2. BOTTOM HALF: The Label (Padding Only Here) */}
+             <div className="p-10 flex flex-col items-center text-center">
+                 
+                 {/* Metadata */}
+                 <span className="font-sans-body text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-4">
+                   Ritual Object
+                 </span>
 
-                {/* The Note (With a small divider above/below to verify it renders) */}
-                <div className="w-8 h-px bg-gray-200 mb-6"></div>
-                <div className="font-serif-title text-sm leading-relaxed text-gray-600 mb-6 max-w-[280px]">
-                   "{data.artifact?.note}"
-                </div>
-                <div className="w-8 h-px bg-gray-200 mb-8"></div>
+                 {/* Title */}
+                 <h3 className="font-serif-title text-2xl text-gray-900 mb-2">
+                   {data.artifact?.title || 'Untitled'}
+                 </h3>
 
-                {/* Button */}
-                <ArtifactButton 
-                  title="Acquire the Edition" 
-                  link={data.artifact?.link || '#'} 
-                />
-            </div>
+                 {/* Subtitle / Note */}
+                 <p className="font-sans-body text-xs text-gray-500 leading-relaxed mb-8 max-w-[250px]">
+                   {data.artifact?.note || data.artifact?.subtitle || "A souvenir of meaning."}
+                 </p>
 
-          </article>
+                 {/* Divider */}
+                 <div className="w-12 h-px bg-gray-200 mb-8"></div>
+
+                 {/* Button */}
+                 <ArtifactButton 
+                   title="Acquire the Edition" 
+                   link={data.artifact?.link || '#'} 
+                 />
+             </div>
+          </div>
 
         </section>
 
