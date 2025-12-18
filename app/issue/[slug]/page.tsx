@@ -38,7 +38,6 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // Text Dragnet
         "note": coalesce(
           description, 
           curatorNote, 
@@ -47,7 +46,7 @@ async function getIssueData(slug: string) {
           pt::text(description), 
           "The object speaks for itself."
         ),
-        // IMAGE DRAGNET: Check all possible names
+        // Image Dragnet (Checks every possible name)
         "imagePlaceholder": coalesce(
             image.asset->url,
             coverImage.asset->url,
@@ -106,57 +105,55 @@ export default async function IssuePage(props: any) {
           ].filter(t => t.value)} 
         />
 
-        {/* ARTIFACT SECTION - The Museum Placard */}
-        <section className="py-32 bg-[#F5F5F0] flex flex-col items-center justify-center min-h-[90vh] px-6">
+        {/* ARTIFACT SECTION */}
+        <section className="py-32 bg-[#F5F5F0] flex flex-col items-center justify-center min-h-screen px-6">
           
           <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em] mb-12 opacity-50">
             III. The Artifact
           </span>
 
-          {/* THE CARD */}
-          {/* Defined Width, White Background, Shadow */}
-          <div className="bg-white w-full max-w-[420px] shadow-2xl flex flex-col">
+          {/* THE CARD CONTAINER */}
+          {/* We use flex-col and overflow-hidden to trap the content */}
+          <div className="bg-white w-full max-w-[400px] shadow-2xl flex flex-col overflow-hidden">
              
-             {/* BLOCK A: THE IMAGE CONTAINER (The Grey Block) */}
-             {/* We use aspect-square (1:1) to force a square box at the top */}
-             <div className="w-full aspect-square bg-[#EAEAEA] relative overflow-hidden">
-                {data.artifact?.imagePlaceholder && (
+             {/* BLOCK A: The Image Header */}
+             {/* Fixed Height: 450px. No positioning absolute. */}
+             <div className="w-full h-[450px] bg-[#EAEAEA] flex-shrink-0">
+                {data.artifact?.imagePlaceholder ? (
                    <img 
                      src={data.artifact.imagePlaceholder} 
                      alt={data.artifact.title} 
-                     className="absolute inset-0 w-full h-full object-cover" 
+                     className="w-full h-full object-cover block"
                    />
+                ) : (
+                   /* Empty State if no image found */
+                   <div className="w-full h-full bg-gray-200" />
                 )}
-                {/* No text fallback here, just empty grey if no image */}
              </div>
 
-             {/* BLOCK B: THE TEXT CONTENT */}
-             <div className="p-10 flex flex-col items-center text-center">
+             {/* BLOCK B: The Text Content */}
+             <div className="p-10 flex flex-col items-center text-center bg-white">
                  
-                 {/* Metadata */}
                  <span className="font-sans-body text-[9px] uppercase tracking-[0.2em] text-gray-400 mb-4">
                    Ritual Object
                  </span>
 
-                 {/* Title */}
                  <h3 className="font-serif-title text-2xl text-gray-900 mb-2">
                    {data.artifact?.title || 'Untitled'}
                  </h3>
 
-                 {/* Subtitle / Note */}
                  <p className="font-sans-body text-xs text-gray-500 leading-relaxed mb-8 max-w-[250px]">
                    {data.artifact?.note || data.artifact?.subtitle || "A souvenir of meaning."}
                  </p>
 
-                 {/* Divider */}
                  <div className="w-12 h-px bg-gray-200 mb-8"></div>
 
-                 {/* Button */}
                  <ArtifactButton 
                    title="Acquire the Edition" 
                    link={data.artifact?.link || '#'} 
                  />
              </div>
+
           </div>
 
         </section>
