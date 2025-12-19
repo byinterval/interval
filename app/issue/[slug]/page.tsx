@@ -6,7 +6,7 @@ import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
-// 1. Setup Sanity Client
+// --- 1. CONFIGURATION ---
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: 'production',
@@ -15,7 +15,7 @@ const client = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 });
 
-// 2. Data Fetching
+// --- 2. DATA FETCHING ---
 async function getIssueData(slug: string) {
   try {
     const query = `*[_type == "issue" && slug.current == $slug][0]{
@@ -38,17 +38,11 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // Text Dragnet
-        "note": coalesce(
-          description, 
-          curatorNote, 
-          note, 
-          pt::text(body), 
-          pt::text(description), 
-          "The object speaks for itself."
-        ),
-        // Image Dragnet
-        "imagePlaceholder": coalesce(
+        "note": coalesce(description, curatorNote, note, pt::text(body), subtitle, ""),
+        
+        // FIX: WE RESTORE THE DRAGNET TO FIND THE IMAGE
+        // We check every possible field name so we don't miss it.
+        "imageSrc": coalesce(
             image.asset->url,
             coverImage.asset->url,
             mainImage.asset->url,
@@ -59,41 +53,35 @@ async function getIssueData(slug: string) {
       }
     }`;
 
-    const data = await client.fetch(query, { slug });
-    return data;
+    return await client.fetch(query, { slug });
   } catch (error) {
     console.error("Fetch error:", error);
     return null;
   }
 }
 
-// 3. The Page Component
+// --- 3. PAGE COMPONENT ---
 export default async function IssuePage(props: any) {
   const params = await Promise.resolve(props.params);
-  const { slug } = params;
-  const data = await getIssueData(slug);
+  const data = await getIssueData(params.slug);
 
-  if (!data) {
-    notFound(); 
-  }
+  if (!data) notFound();
 
   return (
     <CalmEntry>
       <main className="bg-primary-bg min-h-screen">
         
-        {/* HERO */}
+        {/* SECTION 1: HERO */}
         <IssueHero 
           issueNumber={data.issueNumber}
           title={data.title}
           imageSrc={data.coverImage || 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1000'}
         />
 
-        {/* THESIS */}
-        <ThesisModule 
-          text={data.thesis}
-        />
+        {/* SECTION 2: THESIS */}
+        <ThesisModule text={data.thesis} />
 
-        {/* SIGNAL */}
+        {/* SECTION 3: SIGNAL */}
         <SignalAnalysis 
           studioName={data.signal.studio}
           context={data.signal.context}
@@ -106,55 +94,49 @@ export default async function IssuePage(props: any) {
           ].filter(t => t.value)} 
         />
 
-        {/* ARTIFACT SECTION - The Museum Placard */}
-        <section className="py-32 bg-[#F2F2F2] flex flex-col items-center justify-center min-h-screen px-6">
+        {/* --- SECTION 4: THE ARTIFACT --- */}
+        <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F4F4F0]">
           
-          {/* Label above card */}
-          <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em] mb-12 opacity-50">
+          <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown/60">
             III. The Artifact
           </span>
 
-          {/* THE CARD (Figure) */}
-          {/* Use 'overflow-hidden' to chop off anything sticking out */}
-          <figure className="bg-white w-full max-w-[400px] shadow-2xl flex flex-col overflow-hidden">
-             
-             {/* 1. IMAGE CONTAINER */}
-             {/* Aspect Ratio 4:5 ensures a tall, portrait museum look. */}
-             {/* 'relative' ensures the image stays inside. */}
-             <div className="relative w-full aspect-[4/5] bg-gray-100">
-                {data.artifact?.imagePlaceholder ? (
-                   <img 
-                     src={data.artifact.imagePlaceholder} 
-                     alt={data.artifact.title} 
-                     className="absolute inset-0 w-full h-full object-cover" 
-                   />
-                ) : (
-                   /* Empty State */
-                   <div className="w-full h-full bg-gray-200" />
-                )}
-             </div>
+          {/* THE CARD */}
+          <div className="w-full max-w-[420px] bg-white shadow-2xl overflow-hidden flex flex-col">
+            
+            {/* TOP: THE IMAGE */}
+            <div className="relative w-full aspect-[4/5] bg-[#EAEAEA]">
+              {data.artifact?.imageSrc ? (
+                <img 
+                  src={data.artifact.imageSrc} 
+                  alt={data.artifact.title}
+                  className="w-full h-full object-cover block" 
+                />
+              ) : (
+                // If this still shows, check your Sanity Studio to see exactly what the image field is named!
+                <div className="w-full h-full bg-gray-200" />
+              )}
+            </div>
 
-             {/* 2. CAPTION CONTAINER (Figcaption) */}
-             <figcaption className="p-10 flex flex-col items-center text-center bg-white z-10 relative">
-                 
-                 {/* Title */}
-                 <h3 className="font-serif-title text-2xl text-gray-900 mb-2">
-                   {data.artifact?.title || 'Untitled'}
-                 </h3>
+            {/* BOTTOM: THE CONTENT */}
+            <div className="p-10 flex flex-col items-center text-center">
+              <h3 className="mb-3 font-serif-title text-2xl text-gray-900">
+                {data.artifact?.title || 'Untitled Artifact'}
+              </h3>
 
-                 {/* Note */}
-                 <p className="font-sans-body text-xs text-gray-500 leading-relaxed mb-8 max-w-[260px]">
-                   {data.artifact?.note || data.artifact?.subtitle}
-                 </p>
+              <p className="mb-8 font-sans-body text-xs leading-relaxed text-gray-500 max-w-[280px]">
+                {data.artifact?.note}
+              </p>
 
-                 {/* Button */}
-                 <ArtifactButton 
-                   title="Acquire the Edition" 
-                   link={data.artifact?.link || '#'} 
-                 />
-             </figcaption>
+              <div className="mb-8 h-px w-10 bg-gray-200" />
 
-          </figure>
+              <ArtifactButton 
+                title="Acquire the Edition" 
+                link={data.artifact?.link || '#'} 
+              />
+            </div>
+
+          </div>
 
         </section>
 
