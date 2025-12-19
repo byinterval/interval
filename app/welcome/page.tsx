@@ -1,86 +1,99 @@
 'use client';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function WelcomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState('Initializing Ritual...');
+  const [step, setStep] = useState('verifying'); // verifying | granted
 
   useEffect(() => {
-    // 1. CAPTURE DATA
-    // Lemon Squeezy sends data back in the URL parameters
-    const email = searchParams.get('user_email') || localStorage.getItem('interval_user_email');
-    const name = searchParams.get('user_name');
-
-    setStatus('Verifying Membership...');
-
-    if (email) {
-      // 2. SAVE TO STORAGE (For the UI to display "Founding Member")
+    // 1. THE HANDSHAKE
+    // We run this immediately when the page loads
+    const performHandshake = () => {
+      
+      // A. Set the "Active" status in Local Storage
       localStorage.setItem('interval_membership_status', 'active');
-      localStorage.setItem('interval_user_email', email);
-      if (name) localStorage.setItem('interval_user_name', name);
+      
+      // B. Capture email if Lemon Squeezy sent it
+      const email = searchParams.get('user_email');
+      if (email) localStorage.setItem('interval_user_email', email);
 
-      // 3. SET THE CRITICAL COOKIE (The Fix)
-      // This creates the "interval_session" cookie that Middleware & useMember look for.
-      // Max-Age: 1 year (31536000 seconds)
+      // C. SET THE COOKIE (The Golden Key)
+      // This is what the Middleware and Member Hook look for.
       document.cookie = "interval_session=true; path=/; max-age=31536000; SameSite=Lax";
 
-      // 4. SIGNAL SUCCESS
-      // Force a storage event so other tabs/components update immediately
+      // D. Broadcast the change so the Navbar updates instantly
       window.dispatchEvent(new Event('storage'));
 
-      setStatus('Access Granted.');
-
-      // 5. REDIRECT
-      // Wait a brief moment for the cookie to stick, then go to the Atlas
+      // E. Show the "Enter" button after a brief "Verification" delay
       setTimeout(() => {
-        router.push('/atlas');
-      }, 1500);
+        setStep('granted');
+      }, 2000);
+    };
 
-    } else {
-      // Fallback if no email found (e.g. direct visit)
-      setStatus('Redirecting...');
-      setTimeout(() => router.push('/'), 2000);
-    }
-  }, [router, searchParams]);
+    performHandshake();
+  }, [searchParams]);
 
   return (
     <main className="min-h-screen bg-[#F4F4F0] flex flex-col items-center justify-center text-center p-6">
-      
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="max-w-md w-full"
-      >
-        {/* LOGO MARK */}
-        <div className="w-16 h-16 bg-accent-brown mx-auto mb-8 rounded-full flex items-center justify-center">
-            <div className="w-2 h-2 bg-[#F4F4F0] rounded-full animate-pulse" />
-        </div>
+      <AnimatePresence mode='wait'>
+        
+        {/* STATE 1: VERIFYING (The Loading Bar) */}
+        {step === 'verifying' && (
+          <motion.div 
+            key="verifying"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="max-w-md w-full"
+          >
+            <div className="w-16 h-16 bg-accent-brown mx-auto mb-8 rounded-full flex items-center justify-center animate-pulse">
+                <div className="w-2 h-2 bg-[#F4F4F0] rounded-full" />
+            </div>
+            <h1 className="font-serif-title text-2xl text-brand-ink mb-4">
+              Verifying Credentials...
+            </h1>
+            <div className="w-full h-px bg-accent-brown/20 relative overflow-hidden mt-8">
+                <motion.div 
+                    className="absolute inset-0 bg-accent-brown"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '0%' }}
+                    transition={{ duration: 1.8, ease: "easeInOut" }}
+                />
+            </div>
+          </motion.div>
+        )}
 
-        {/* TITLE */}
-        <h1 className="font-serif-title text-3xl text-brand-ink mb-4">
-          {status === 'Access Granted.' ? 'Welcome to The Interval.' : 'Confirming Entry...'}
-        </h1>
+        {/* STATE 2: ACCESS GRANTED (The Button) */}
+        {step === 'granted' && (
+          <motion.div 
+            key="granted"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-md w-full"
+          >
+             <span className="font-sans-body text-xs text-accent-brown uppercase tracking-[0.2em] mb-6 block">
+                Membership Confirmed
+             </span>
+             
+             <h1 className="font-serif-title text-5xl md:text-6xl text-brand-ink mb-12">
+               Welcome to<br/>The Interval.
+             </h1>
 
-        {/* STATUS TEXT */}
-        <p className="font-sans-body text-xs text-accent-brown uppercase tracking-widest mb-12">
-          {status}
-        </p>
+             {/* THE ENTRY BUTTON */}
+             <button
+               onClick={() => router.push('/')} // Sends them to Issue 01
+               className="group relative inline-flex items-center justify-center px-10 py-4 overflow-hidden font-sans-body text-xs font-medium tracking-[0.2em] text-white bg-brand-ink rounded-full transition-all duration-300 hover:bg-accent-brown hover:scale-105 hover:shadow-xl uppercase"
+             >
+               <span className="relative z-10">Enter Issue No. 01</span>
+             </button>
+          </motion.div>
+        )}
 
-        {/* LOADING BAR */}
-        <div className="w-full h-px bg-accent-brown/20 relative overflow-hidden">
-            <motion.div 
-                className="absolute inset-0 bg-accent-brown"
-                initial={{ x: '-100%' }}
-                animate={{ x: '0%' }}
-                transition={{ duration: 1.5, ease: "easeInOut" }}
-            />
-        </div>
-
-      </motion.div>
+      </AnimatePresence>
     </main>
   );
 }
