@@ -38,7 +38,7 @@ async function getIssueData(slug: string) {
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        // Robust Note Fetching
+        // Text Dragnet
         "note": coalesce(
           description, 
           curatorNote, 
@@ -47,7 +47,7 @@ async function getIssueData(slug: string) {
           pt::text(description), 
           "The object speaks for itself."
         ),
-        // Robust Image Fetching
+        // Image Dragnet
         "imagePlaceholder": coalesce(
             image.asset->url,
             coverImage.asset->url,
@@ -106,39 +106,44 @@ export default async function IssuePage(props: any) {
           ].filter(t => t.value)} 
         />
 
-        {/* ARTIFACT SECTION */}
-        <section className="py-32 bg-[#F5F5F0] flex flex-col items-center justify-center min-h-screen px-6">
+        {/* ARTIFACT SECTION - The Museum Placard */}
+        <section className="py-32 bg-[#F2F2F2] flex flex-col items-center justify-center min-h-screen px-6">
           
+          {/* Label above card */}
           <span className="font-sans-body text-[10px] text-accent-brown uppercase tracking-[0.2em] mb-12 opacity-50">
             III. The Artifact
           </span>
 
-          {/* THE CARD */}
-          <div className="bg-white w-full max-w-[400px] shadow-2xl flex flex-col overflow-hidden">
+          {/* THE CARD (Figure) */}
+          {/* Use 'overflow-hidden' to chop off anything sticking out */}
+          <figure className="bg-white w-full max-w-[400px] shadow-2xl flex flex-col overflow-hidden">
              
-             {/* BLOCK A: IMAGE (Locked to 450px height) */}
-             <div className="w-full h-[450px] bg-[#EAEAEA] flex-shrink-0">
+             {/* 1. IMAGE CONTAINER */}
+             {/* Aspect Ratio 4:5 ensures a tall, portrait museum look. */}
+             {/* 'relative' ensures the image stays inside. */}
+             <div className="relative w-full aspect-[4/5] bg-gray-100">
                 {data.artifact?.imagePlaceholder ? (
                    <img 
                      src={data.artifact.imagePlaceholder} 
                      alt={data.artifact.title} 
-                     className="w-full h-full object-cover block"
+                     className="absolute inset-0 w-full h-full object-cover" 
                    />
                 ) : (
+                   /* Empty State */
                    <div className="w-full h-full bg-gray-200" />
                 )}
              </div>
 
-             {/* BLOCK B: TEXT & BUTTON */}
-             <div className="p-10 flex flex-col items-center text-center bg-white">
+             {/* 2. CAPTION CONTAINER (Figcaption) */}
+             <figcaption className="p-10 flex flex-col items-center text-center bg-white z-10 relative">
                  
                  {/* Title */}
                  <h3 className="font-serif-title text-2xl text-gray-900 mb-2">
                    {data.artifact?.title || 'Untitled'}
                  </h3>
 
-                 {/* Note (Curator Note) */}
-                 <p className="font-sans-body text-xs text-gray-500 leading-relaxed mb-8 max-w-[250px]">
+                 {/* Note */}
+                 <p className="font-sans-body text-xs text-gray-500 leading-relaxed mb-8 max-w-[260px]">
                    {data.artifact?.note || data.artifact?.subtitle}
                  </p>
 
@@ -147,9 +152,9 @@ export default async function IssuePage(props: any) {
                    title="Acquire the Edition" 
                    link={data.artifact?.link || '#'} 
                  />
-             </div>
+             </figcaption>
 
-          </div>
+          </figure>
 
         </section>
 
