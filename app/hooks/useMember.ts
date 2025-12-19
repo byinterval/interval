@@ -6,70 +6,55 @@ export function useMember() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [id, setId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = () => {
-      // 1. Read data from cookies (simulating a session check)
-      // In a real app, you might verify the cookie with an API call here.
-      // For now, we check if the cookie exists to update UI state.
-      const hasCookie = document.cookie.includes('interval_session=true');
+      // 1. CHECK EVERYWHERE
+      // We check for the cookie AND the local storage.
+      // If EITHER exists, we grant access.
+      const hasCookie = document.cookie.includes('interval_session');
+      const localStatus = localStorage.getItem('interval_membership_status');
+      const storedEmail = localStorage.getItem('interval_user_email');
       
-      const userId = localStorage.getItem('interval_user_id');
-      const userEmail = localStorage.getItem('interval_user_email');
-      
-      setIsAuthenticated(hasCookie);
-      setId(userId);
-      setEmail(userEmail || 'member@theinterval.com');
+      const isMember = hasCookie || localStatus === 'active';
+
+      // 2. UPDATE STATE
+      setIsAuthenticated(isMember);
+      setEmail(storedEmail || 'member@theinterval.com');
       setIsLoading(false);
     };
 
     checkAuth();
-    // Listen for storage changes in case other tabs update
-    window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
+    
+    // Check again every second (Polling) to ensure state never gets stale
+    const interval = setInterval(checkAuth, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // --- ACTIONS ---
 
   const logout = () => {
-    // 1. Clear Local Storage
-    localStorage.removeItem('interval_user_id');
-    localStorage.removeItem('interval_user_email');
-    
-    // 2. Clear Cookie (By setting it to expire in the past)
+    // Nuke everything
+    localStorage.clear();
     document.cookie = "interval_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-
-    // 3. Force UI Update
-    window.dispatchEvent(new Event('storage'));
     setIsAuthenticated(false);
-    
-    // 4. Redirect Home
-    router.push('/'); 
+    router.push('/');
+    router.refresh(); // Hard refresh to clear server caches
   };
 
   const openBilling = () => {
-    // THE CUSTOMER PORTAL
-    // Replace 'theinterval' with your actual Lemon Squeezy store subdomain if different.
-    // This URL allows users to manage their own subscriptions safely.
+     // Replace with your actual store URL if different
     window.open('https://theinterval.lemonsqueezy.com/billing', '_blank');
-  };
-
-  const openSubscriptions = () => {
-    // Currently, billing and subscriptions are the same portal
-    openBilling();
   };
 
   return { 
     isAuthenticated, 
-    isActive: isAuthenticated, 
+    isActive: isAuthenticated, // Alias
     isLoading, 
-    id, 
     email,
-    login: () => {}, 
     logout,
     openBilling,
-    openSubscriptions
+    openSubscriptions: openBilling
   };
 }
