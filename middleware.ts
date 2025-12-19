@@ -2,15 +2,19 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // 1. Check if the user has the session cookie
-  const memberfulCookie = request.cookies.get('memberful_session')
+  // 1. Check for OUR custom session cookie
+  // OLD: memberful_session
+  // NEW: interval_session (matches what we set in the Welcome API)
+  const sessionCookie = request.cookies.get('interval_session')
 
-  // 2. Define which pages are "Locked" (The Living Atlas)
+  // 2. Define Locked Pages
   if (request.nextUrl.pathname.startsWith('/atlas')) {
     
-    if (!memberfulCookie) {
-      // 3. If no cookie, redirect to the "Last Chance" page
-      return NextResponse.redirect(new URL('/subscribe/last-chance', request.url))
+    // 3. The Gatekeeper Logic
+    if (!sessionCookie) {
+      // If no cookie, redirect to the Signup page (or Last Chance if you prefer)
+      // Changing this to '/signup' ensures they go somewhere that definitely exists
+      return NextResponse.redirect(new URL('/signup', request.url))
     }
   }
 
@@ -24,7 +28,8 @@ export const config = {
      * - api
      * - _next
      * - favicon
-     * - welcome (ADD THIS so middleware never touches the success page)
+     * - welcome
+     * - static files
      */
     '/((?!api|_next/static|_next/image|favicon.ico|welcome).*)',
   ],
