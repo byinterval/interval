@@ -7,6 +7,7 @@ export function useMember() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(null);
+  const [id, setId] = useState<string | null>(null); // <--- Added ID state
 
   useEffect(() => {
     const checkAuth = () => {
@@ -14,6 +15,7 @@ export function useMember() {
       const hasCookie = document.cookie.includes('interval_session');
       const localStatus = localStorage.getItem('interval_membership_status');
       const storedEmail = localStorage.getItem('interval_user_email');
+      const storedId = localStorage.getItem('interval_user_id'); // <--- Retrieve ID
       
       // If EITHER exists, we grant access.
       const isMember = hasCookie || localStatus === 'active';
@@ -21,6 +23,7 @@ export function useMember() {
       // 2. UPDATE STATE
       setIsAuthenticated(isMember);
       setEmail(storedEmail || 'member@theinterval.com');
+      setId(storedId); // <--- Set ID
       setIsLoading(false);
     };
 
@@ -45,7 +48,6 @@ export function useMember() {
     window.open('https://theinterval.lemonsqueezy.com/billing', '_blank');
   };
 
-  // THE MISSING PIECE
   const login = () => {
     router.push('/signup');
   };
@@ -55,7 +57,8 @@ export function useMember() {
     isActive: isAuthenticated, 
     isLoading, 
     email,
-    login, // <--- Added back to fix the error
+    id, // <--- Return ID to fix the SaveButton error
+    login,
     logout,
     openBilling,
     openSubscriptions: openBilling
