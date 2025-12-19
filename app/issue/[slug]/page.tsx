@@ -40,13 +40,14 @@ async function getIssueData(slug: string) {
         subtitle,
         "note": coalesce(description, curatorNote, note, pt::text(body), subtitle, ""),
         
-        // FIX: WE RESTORE THE DRAGNET TO FIND THE IMAGE
-        // We check every possible field name so we don't miss it.
+        // --- THE "SUPER DRAGNET" ---
+        // We check every single possible name for an image field
         "imageSrc": coalesce(
             image.asset->url,
             coverImage.asset->url,
             mainImage.asset->url,
             photo.asset->url,
+            artifactImage.asset->url,
             asset->url
         ),
         link
@@ -71,17 +72,17 @@ export default async function IssuePage(props: any) {
     <CalmEntry>
       <main className="bg-primary-bg min-h-screen">
         
-        {/* SECTION 1: HERO */}
+        {/* HERO */}
         <IssueHero 
           issueNumber={data.issueNumber}
           title={data.title}
           imageSrc={data.coverImage || 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1000'}
         />
 
-        {/* SECTION 2: THESIS */}
+        {/* THESIS */}
         <ThesisModule text={data.thesis} />
 
-        {/* SECTION 3: SIGNAL */}
+        {/* SIGNAL */}
         <SignalAnalysis 
           studioName={data.signal.studio}
           context={data.signal.context}
@@ -95,32 +96,38 @@ export default async function IssuePage(props: any) {
         />
 
         {/* --- SECTION 4: THE ARTIFACT --- */}
-        <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F4F4F0]">
+        {/* Background is grey to make the White Card visible */}
+        <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F0F0F0]">
           
           <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown/60">
             III. The Artifact
           </span>
 
-          {/* THE CARD */}
-          <div className="w-full max-w-[420px] bg-white shadow-2xl overflow-hidden flex flex-col">
+          {/* === THE CARD === */}
+          {/* This DIV is the "Shoebox". Everything inside is locked. */}
+          <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
             
-            {/* TOP: THE IMAGE */}
-            <div className="relative w-full aspect-[4/5] bg-[#EAEAEA]">
+            {/* ROW 1: The Image */}
+            {/* Fixed height of 500px. No 'aspect-ratio' math. Just 500px of image. */}
+            <div className="w-full h-[500px] bg-[#E5E5E5] relative overflow-hidden">
               {data.artifact?.imageSrc ? (
                 <img 
                   src={data.artifact.imageSrc} 
                   alt={data.artifact.title}
-                  className="w-full h-full object-cover block" 
+                  className="w-full h-full object-cover block"
+                  style={{ display: 'block' }} // Force display block to prevent gaps
                 />
               ) : (
-                // If this still shows, check your Sanity Studio to see exactly what the image field is named!
-                <div className="w-full h-full bg-gray-200" />
+                // Debugging State: If no image found, this helps us know why
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs uppercase tracking-widest">
+                  No Image Found in DB
+                </div>
               )}
             </div>
 
-            {/* BOTTOM: THE CONTENT */}
-            <div className="p-10 flex flex-col items-center text-center">
-              <h3 className="mb-3 font-serif-title text-2xl text-gray-900">
+            {/* ROW 2: The Text */}
+            <div className="p-12 flex flex-col items-center text-center bg-white">
+              <h3 className="mb-4 font-serif-title text-2xl text-gray-900">
                 {data.artifact?.title || 'Untitled Artifact'}
               </h3>
 
@@ -128,7 +135,8 @@ export default async function IssuePage(props: any) {
                 {data.artifact?.note}
               </p>
 
-              <div className="mb-8 h-px w-10 bg-gray-200" />
+              {/* The Visual Divider */}
+              <div className="mb-8 h-px w-12 bg-gray-200" />
 
               <ArtifactButton 
                 title="Acquire the Edition" 
@@ -137,6 +145,7 @@ export default async function IssuePage(props: any) {
             </div>
 
           </div>
+          {/* === END CARD === */}
 
         </section>
 
