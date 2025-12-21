@@ -38,30 +38,34 @@ export default function SignalAnalysis({
           <div className="grid grid-cols-1 gap-8">
              {images.length > 0 ? (
                images.map((src: string, index: number) => (
-                 <motion.div
+                 <div
                    key={index}
-                   initial={{ opacity: 0, y: 20 }}
-                   whileInView={{ opacity: 1, y: 0 }}
-                   viewport={{ once: true }}
-                   transition={{ duration: 0.8 }}
                    className="w-full bg-gray-100 shadow-xl"
                  >
-                   <img 
-                     src={src} 
-                     alt={`Signal ${index + 1}`}
-                     className="w-full h-auto object-cover block"
-                   />
+                   {/* We force a minimum height so it can't collapse */}
+                   <div className="relative min-h-[300px]">
+                      <img 
+                        src={src} 
+                        alt={`Signal ${index + 1}`}
+                        className="w-full h-auto object-cover block"
+                        onError={(e) => {
+                          // Visual indicator if image fails to load
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.classList.add('bg-red-100', 'border', 'border-red-500');
+                          e.currentTarget.parentElement!.innerHTML = '<div class="p-4 text-red-500 text-xs">Image Failed to Load</div>';
+                        }}
+                      />
+                   </div>
                    <div className="p-3 bg-white border-t border-gray-100">
                       <span className="font-sans-body text-[9px] uppercase tracking-widest text-gray-400">
                          Fig. {index + 1}
                       </span>
                    </div>
-                 </motion.div>
+                 </div>
                ))
              ) : (
-                // This will show if the field exists but is empty
                 <div className="p-8 border border-accent-brown/20 text-accent-brown/50 text-center text-xs uppercase tracking-widest">
-                   No Signal Images Found
+                   No Signal Images Found in Data
                 </div>
              )}
           </div>

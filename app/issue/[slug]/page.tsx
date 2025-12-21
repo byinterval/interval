@@ -3,71 +3,96 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { client } from '@/lib/sanity';
-import { urlFor } from '@/lib/image';
 import IssueHero from '../../components/IssueHero';
 import ThesisModule from '../../components/ThesisModule';
 import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
+// --- THE MANUAL BUILDER (Bypasses Libraries) ---
+function manualUrlBuilder(source: any) {
+  try {
+    // 1. Get the Reference ID (looks like: image-8273...-1000x800-jpg)
+    const ref = source?.asset?._ref || source?._ref || source?.asset?.url;
+    
+    // If it's already a link, return it
+    if (typeof ref === 'string' && ref.startsWith('http')) return ref;
+
+    if (!ref) return null;
+
+    // 2. Parse the ID
+    // Pattern: image-{ID}-{WIDTH}x{HEIGHT}-{FORMAT}
+    const parts = ref.split('-');
+    if (parts.length !== 4) return null;
+
+    const id = parts[1];
+    const dimensions = parts[2];
+    const format = parts[3];
+    const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+    const dataset = 'production';
+
+    // 3. Construct the String
+    return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${dimensions}.${format}`;
+  } catch (e) {
+    return null;
+  }
+}
+
 export default function IssuePage() {
   const params = useParams();
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!params?.slug) return;
       
+      // Fetch 'signalImages' with the asset reference
+      const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
+        ...,
+        signalImages[]{ asset }, 
+        linkedArtifact->{ ... }
+      }`;
+      
       try {
-        // 1. TARGET 'signalImages' DIRECTLY
-        const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
-          ...,
-          signalImages, 
-          linkedArtifact->{ ... }
-        }`;
-        
         const result = await client.fetch(query);
-        console.log("✅ FRESH DATA:", result); // Verify in console
+        console.log("🔥 SANITY DATA:", result);
         setData(result);
       } catch (e) {
         console.error(e);
-      } finally {
-        setLoading(false);
       }
     };
     
     fetchData();
   }, [params?.slug]);
 
-  if (loading) return <div className="min-h-screen bg-primary-bg" />;
-  if (!data) return <div className="min-h-screen flex items-center justify-center">Issue not found</div>;
+  if (!data) return <div className="min-h-screen bg-primary-bg" />;
 
-  // 2. PROCESS IMAGES
-  // We take the specific 'signalImages' field and convert it to URLs
+  // --- PROCESS IMAGES MANUALLY ---
   const rawImages = data.signalImages || [];
   
   const processedImages = rawImages.map((img: any) => {
-    try {
-      return urlFor(img).width(1200).url();
-    } catch (e) {
-      return null;
-    }
-  }).filter(Boolean); // Removes any nulls
+    const url = manualUrlBuilder(img);
+    console.log("🛠️ Generated URL:", url); // Check your console for this!
+    return url;
+  }).filter(Boolean);
 
   return (
     <CalmEntry>
       <main className="bg-primary-bg min-h-screen">
         
+        {/* DEBUG BAR: If you see this, the code is live */}
+        <div className="w-full bg-orange-600 text-white text-center text-[10px] py-1 font-mono uppercase">
+           Manual Builder Active • {processedImages.length} Images Generated
+        </div>
+
         <IssueHero 
           issueNumber={data.issueNumber}
           title={data.title}
-          imageSrc={data.coverImage ? urlFor(data.coverImage).url() : ''}
+          imageSrc={manualUrlBuilder(data.coverImage) || ''}
         />
 
         <ThesisModule text={data.thesisBody || data.thesis} />
 
-        {/* 3. PASS CLEAN URLS TO COMPONENT */}
         <SignalAnalysis 
           studioName={data.signalStudio}
           context={data.signalContext}
@@ -84,9 +109,9 @@ export default function IssuePage() {
           {data.linkedArtifact && (
              <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
                 <div className="w-full h-[500px] bg-[#E5E5E5] relative overflow-hidden">
-                   {data.linkedArtifact.image || data.linkedArtifact.coverImage ? (
+                   {manualUrlBuilder(data.linkedArtifact.image || data.linkedArtifact.coverImage) ? (
                       <img 
-                        src={urlFor(data.linkedArtifact.image || data.linkedArtifact.coverImage).url()} 
+                        src={manualUrlBuilder(data.linkedArtifact.image || data.linkedArtifact.coverImage)!} 
                         alt="Artifact"
                         className="w-full h-full object-cover"
                       />
