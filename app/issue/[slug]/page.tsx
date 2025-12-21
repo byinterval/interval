@@ -1,232 +1,319 @@
-'use client';
+import React, { useState, useEffect } from 'react';
 
-// v11.0 - SELF-CONTAINED FIX
-// We have INLINED the components to bypass build errors.
-// This guarantees the page will build if the basic environment works.
-
-export const dynamic = 'force-dynamic';
-
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-
-// Attempt to import client. If this fails, we will handle it gracefully or you might need to adjust this path.
-// Standard path assumption: app/issue/[slug]/page.tsx -> ../../../lib/sanity
-import { client } from '../../../lib/sanity'; 
-
-// --- INLINE COMPONENTS (To fix "Cannot find module" build errors) ---
-
-const IssueHero = ({ title, issueNumber, imageSrc }: any) => (
-  <header className="relative w-full h-[60vh] flex items-center justify-center bg-stone-900 text-white overflow-hidden">
-    {imageSrc && (
-      <img src={imageSrc} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-50" />
-    )}
-    <div className="relative z-10 text-center p-4">
-      <p className="text-xs uppercase tracking-[0.2em] mb-2">Issue {issueNumber}</p>
-      <h1 className="text-4xl md:text-6xl font-serif font-light">{title}</h1>
-    </div>
-  </header>
+// --- ICONS (Inline to remove external dependencies) ---
+const Play = ({ size = 18, className = "" }: { size?: number, className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polygon points="5 3 19 12 5 21 5 3" />
+  </svg>
 );
 
-const ThesisModule = ({ text }: any) => (
-  <section className="py-20 px-6 max-w-3xl mx-auto text-center">
-    <h2 className="text-xs font-bold tracking-widest text-stone-400 mb-6 uppercase">I. The Thesis</h2>
-    <p className="text-xl md:text-2xl font-serif leading-relaxed text-stone-800">{text}</p>
-  </section>
+const Pause = ({ size = 18, className = "" }: { size?: number, className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="6" y="4" width="4" height="16" />
+    <rect x="14" y="4" width="4" height="16" />
+  </svg>
 );
 
-const SignalAnalysis = ({ studioName, context, method, images }: any) => (
-  <section className="bg-stone-50 py-20 px-6 border-t border-stone-200">
-    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-      <div className="grid gap-6">
-        {(images || []).map((url: string, i: number) => (
-          <img key={i} src={url} alt="Signal Detail" className="w-full h-auto shadow-sm" />
-        ))}
-        {(!images || images.length === 0) && (
-          <div className="p-10 bg-gray-200 text-gray-500 text-center text-xs font-mono">
-            NO SIGNAL IMAGES FOUND
-          </div>
-        )}
-      </div>
-      <div className="sticky top-20">
-        <h2 className="text-xs font-bold tracking-widest text-stone-400 mb-6 uppercase">II. The Signal</h2>
-        <h3 className="text-3xl font-serif mb-6 text-stone-900">{studioName}</h3>
-        <div className="space-y-6 text-stone-600 font-serif leading-relaxed">
-          <p>{context}</p>
-          <div className="pl-4 border-l-2 border-stone-300">
-            <p className="italic">{method}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+const ArrowRight = ({ size = 18, className = "" }: { size?: number, className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </svg>
 );
 
-const ArtifactButton = ({ title, link }: any) => (
-  <a href={link} target="_blank" rel="noopener noreferrer" className="inline-block mt-8 text-xs font-bold uppercase tracking-widest border-b border-black pb-1 hover:opacity-60 transition-opacity">
-    {title} &rarr;
-  </a>
+const Share2 = ({ size = 18, className = "" }: { size?: number, className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+  </svg>
 );
 
-// --- ROBUST URL BUILDER ---
-const manualUrlBuilder = (source: any) => {
-  if (!source) return null;
-  try {
-    if (typeof source === 'string' && source.startsWith('http')) return source;
-    if (source.url && typeof source.url === 'string' && source.url.startsWith('http')) return source.url;
+const Bookmark = ({ size = 18, className = "" }: { size?: number, className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </svg>
+);
 
-    const ref = source.asset?._ref || source._ref;
-    if (typeof ref !== 'string') return null;
+// --- TYPES ---
+// Defined based on Component B Strategy structure
+export interface IssueContent {
+  id: string;
+  date: string;
+  title: string;
+  heroImage: string;
+  thesis: {
+    content: string;
+    author: string;
+  };
+  signal: {
+    studioName: string;
+    location: string;
+    tags: string[];
+    images: string[];
+    context: string;
+    method: string;
+    takeaway: string;
+  };
+  artifact: {
+    name: string;
+    creator: string;
+    image: string;
+    description: string;
+    cta: string;
+  };
+}
 
-    const parts = ref.split('-');
-    if (parts.length !== 4) return null;
-    
-    const [_, id, dimensions, format] = parts;
-
-    // Resolve Project ID
-    let projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
-    
-    // Fallback: Try to grab from the client object
-    if (!projectId && client) {
-      try {
-        const config = (client as any).config ? 
-          (typeof (client as any).config === 'function' ? (client as any).config() : (client as any).config) 
-          : null;
-        if (config?.projectId) projectId = config.projectId;
-      } catch (err) {}
-    }
-
-    const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
-
-    if (!projectId) {
-      return `https://placehold.co/600x400/red/white?text=MISSING+ID`;
-    }
-
-    return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${dimensions}.${format}`;
-  } catch (error) {
-    return null;
+// --- EMPTY STATE / PLACEHOLDERS ---
+// Used to prevent crashes if no data is passed, while keeping the UI visible for dev
+const EMPTY_CONTENT: IssueContent = {
+  id: "000",
+  date: "DD.MM.YYYY",
+  title: "[Issue Title Here]",
+  heroImage: "", // Use empty string or placeholder URL
+  thesis: {
+    content: "[Thesis Statement: A short, sharp essay defining the mood of the week.]",
+    author: "Editorial Board"
+  },
+  signal: {
+    studioName: "[Studio Name]",
+    location: "[City, Country]",
+    tags: ["Tag 1", "Tag 2", "Tag 3"],
+    images: ["", ""], // Placeholder slots for images
+    context: "[The Context: Who the studio is and why they are relevant.]",
+    method: "[The Method: Analysis of how they achieved the aesthetic.]",
+    takeaway: "[The Takeaway: Specific insight for the user.]"
+  },
+  artifact: {
+    name: "[Artifact Name]",
+    creator: "[Creator/Brand]",
+    image: "",
+    description: "[The Ritual: Connection to the user's inner life.]",
+    cta: "Acquire"
   }
 };
 
-export default function IssuePage() {
-  const params = useParams();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const IssuePage = ({ data = EMPTY_CONTENT }: { data?: IssueContent }) => {
+  const [scrolled, setScrolled] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState(false);
 
+  // Handle scroll for navbar transparency effect
   useEffect(() => {
-    const fetchData = async () => {
-      if (!params?.slug) return;
-
-      try {
-        // Query looks in multiple places for image data to ensure we find it
-        const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
-          ...,
-          "coverImageUrl": coverImage.asset->url,
-          signalImages[]{ "url": asset->url, asset },
-          signal { images[]{ "url": asset->url, asset } },
-          "signalRef": signal->{
-             title, context, method,
-             images[]{ "url": asset->url, asset }
-          },
-          linkedArtifact->{ 
-            ...,
-            "imageUrl": image.asset->url,
-            "coverImageUrl": coverImage.asset->url
-          }
-        }`;
-
-        const result = await client.fetch(query);
-        if (result) {
-          setData(result);
-        } else {
-          setError("Issue not found");
-        }
-      } catch (err: any) {
-        console.error("Fetch failed:", err);
-        setError(err.message || "Failed to load issue");
-      } finally {
-        setLoading(false);
-      }
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
     };
-
-    fetchData();
-  }, [params?.slug]);
-
-  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center p-10 font-mono text-sm text-gray-500">LOADING v11.0...</div>;
-  if (error || !data) return <div className="min-h-screen bg-white flex items-center justify-center p-10 font-mono text-sm text-red-500">ERROR: {error}</div>;
-
-  // --- DATA PROCESSING ---
-  const resolvedSignal = data.signalRef || data.signal || {};
-  const rawImages = resolvedSignal.images || data.signalImages || [];
-  
-  const processedImages = Array.isArray(rawImages) ? rawImages.map((img: any) => {
-    if (img?.url) return img.url;
-    return manualUrlBuilder(img);
-  }).filter(Boolean) as string[] : [];
-
-  const finalImages = processedImages.length > 0 ? processedImages : [
-    'https://placehold.co/800x600/E5E5E5/A3A3A3?text=No+Signal+Images',
-  ];
-
-  const heroImage = data.coverImageUrl || manualUrlBuilder(data.coverImage) || '';
-  
-  const getArtifactImage = () => {
-    if (!data.linkedArtifact) return null;
-    const a = data.linkedArtifact;
-    return a.imageUrl || a.coverImageUrl || manualUrlBuilder(a.image || a.coverImage);
-  };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <main className="bg-white min-h-screen relative pb-20">
-      <IssueHero 
-        issueNumber={data.issueNumber}
-        title={data.title}
-        imageSrc={heroImage}
-      />
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-neutral-200">
+      
+      {/* --- NAVIGATION (Atmospheric) --- */}
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-white/90 backdrop-blur-md py-4 border-b border-neutral-100' : 'bg-transparent py-6 text-white'}`}>
+        <div className="max-w-screen-2xl mx-auto px-6 flex justify-between items-center">
+          <div className="text-sm tracking-widest font-medium uppercase">
+            The Interval <span className="opacity-50 mx-2">|</span> No. {data.id}
+          </div>
+          <div className="flex gap-6 items-center">
+            <button className="hover:opacity-70 transition-opacity">
+              <Share2 size={18} />
+            </button>
+            <button className="hover:opacity-70 transition-opacity">
+              <Bookmark size={18} />
+            </button>
+            <div className={`text-xs tracking-widest border px-3 py-1 rounded-full ${scrolled ? 'border-neutral-900' : 'border-white'}`}>
+              SUBSCRIBER
+            </div>
+          </div>
+        </div>
+      </nav>
 
-      <ThesisModule text={data.thesisBody || data.thesis} />
+      {/* --- HERO HEADER (The Evidence) --- */}
+      <header className="relative h-screen w-full overflow-hidden bg-neutral-900">
+        <div className="absolute inset-0">
+          {data.heroImage ? (
+            <img 
+              src={data.heroImage} 
+              alt="Atmospheric Cover" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-neutral-600">
+              <span className="tracking-widest uppercase text-xs">[Hero Image Placeholder]</span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/30" /> {/* Scrim for text readability */}
+        </div>
 
-      <SignalAnalysis 
-        studioName={resolvedSignal.title || data.signalStudio || "Studio"}
-        context={resolvedSignal.context || data.signalContext}
-        method={resolvedSignal.method || data.signalMethod}
-        images={finalImages} 
-      />
+        <div className="absolute inset-0 flex flex-col justify-center items-center text-white text-center px-4">
+          <span className="text-xs md:text-sm tracking-[0.3em] uppercase mb-6 opacity-90 animate-fade-in-up">
+            Issue {data.id} • {data.date}
+          </span>
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-light tracking-tight mb-8 max-w-5xl leading-tight">
+            {data.title}
+          </h1>
+          
+          {/* Audio Artifact Interaction */}
+          <button 
+            onClick={() => setAudioPlaying(!audioPlaying)}
+            className="flex items-center gap-3 text-xs md:text-sm tracking-widest border border-white/30 hover:bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full transition-all"
+          >
+            {audioPlaying ? <Pause size={14} /> : <Play size={14} />}
+            {audioPlaying ? "PAUSE SOUNDSCAPE" : "PLAY SOUNDSCAPE"}
+          </button>
+        </div>
 
-      <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F0F0F0]">
-        <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-gray-400">
-          III. The Artifact
-        </span>
-        {data.linkedArtifact && (
-           <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
-              <div className="w-full h-[500px] bg-gray-200 relative overflow-hidden">
-                 {getArtifactImage() ? (
-                    <img 
-                      src={getArtifactImage()!} 
-                      alt={data.linkedArtifact.title}
-                      className="w-full h-full object-cover"
-                    />
-                 ) : <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Image</div>}
-              </div>
-              <div className="p-12 flex flex-col items-center text-center bg-white">
-                <h3 className="mb-4 font-serif text-2xl text-gray-900">{data.linkedArtifact.title}</h3>
-                <p className="mb-8 font-sans text-xs leading-relaxed text-gray-500 max-w-[280px]">
-                  {data.linkedArtifact.note || data.linkedArtifact.description}
-                </p>
-                <ArtifactButton title="Acquire" link={data.linkedArtifact.link || '#'} />
-              </div>
-           </div>
-        )}
+        <div className="absolute bottom-10 left-0 w-full flex justify-center animate-bounce duration-[2000ms]">
+          <div className="w-[1px] h-16 bg-white/50"></div>
+        </div>
+      </header>
+
+      {/* --- PILLAR I: THE THESIS (The Intellectual Context) --- */}
+      <section className="py-32 px-6 md:px-12 bg-white">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="w-12 h-[1px] bg-neutral-900 mx-auto mb-12"></div>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif leading-relaxed text-neutral-800">
+            "{data.thesis.content}"
+          </h2>
+          <div className="mt-12 text-xs font-bold tracking-widest uppercase text-neutral-500">
+            — {data.thesis.author}
+          </div>
+        </div>
       </section>
 
-      {/* VERSION BADGE - If you see this, the deploy worked */}
-      <div style={{
-        position: 'fixed', bottom: '10px', right: '10px', 
-        background: 'green', color: 'white', padding: '4px 8px', 
-        borderRadius: '4px', zIndex: 99999, fontSize: '10px', fontFamily: 'monospace'
-      }}>
-        v11.0 (Inlined)
-      </div>
-    </main>
+      {/* --- PILLAR II: THE SIGNAL (The Cultural Intelligence) --- */}
+      <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
+        
+        {/* Left: Forensic Images (Sticky on Desktop) */}
+        <div className="bg-neutral-100 lg:sticky lg:top-0 lg:h-screen p-4 grid gap-4 content-center overflow-hidden">
+          {data.signal.images.map((img, idx) => (
+            <div key={idx} className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-200">
+              {img ? (
+                <img 
+                  src={img} 
+                  alt={`Detail ${idx + 1}`} 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 ease-out"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                  <span className="text-xs uppercase tracking-widest">[Image Slot {idx + 1}]</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Right: The Analysis */}
+        <div className="bg-white p-8 md:p-20 flex flex-col justify-center">
+          <div className="flex flex-wrap gap-2 mb-8">
+            {data.signal.tags.map((tag, i) => (
+              <span key={i} className="px-3 py-1 bg-neutral-100 text-neutral-600 text-[10px] uppercase tracking-widest rounded-sm">
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <h3 className="text-4xl font-serif mb-2">{data.signal.studioName}</h3>
+          <p className="text-neutral-500 italic mb-12">{data.signal.location}</p>
+
+          <div className="space-y-12 max-w-md">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest mb-4 border-l-2 border-neutral-900 pl-3">The Context</h4>
+              <p className="text-neutral-600 leading-relaxed font-light text-lg">
+                {data.signal.context}
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-widest mb-4 border-l-2 border-neutral-900 pl-3">The Method</h4>
+              <p className="text-neutral-600 leading-relaxed font-light text-lg">
+                {data.signal.method}
+              </p>
+            </div>
+
+            <div className="bg-neutral-50 p-6 border border-neutral-100">
+              <h4 className="text-xs font-bold uppercase tracking-widest mb-2 text-neutral-400">The Takeaway</h4>
+              <p className="text-neutral-800 font-medium">
+                {data.signal.takeaway}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* --- PILLAR III: THE ARTIFACT (The Ritual Object) --- */}
+      <section className="py-32 px-6 bg-neutral-100 border-t border-neutral-200">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-center">
+            
+            {/* The Totemic Image */}
+            <div className="order-2 md:order-1 bg-white p-12 shadow-sm aspect-square flex items-center justify-center">
+              {data.artifact.image ? (
+                <img 
+                  src={data.artifact.image} 
+                  alt={data.artifact.name}
+                  className="max-h-full max-w-full object-contain drop-shadow-xl"
+                />
+              ) : (
+                <span className="text-xs uppercase tracking-widest text-neutral-300">[Object Image]</span>
+              )}
+            </div>
+
+            {/* The Museum Placard */}
+            <div className="order-1 md:order-2">
+              <div className="text-xs tracking-widest uppercase text-neutral-500 mb-6">
+                Object No. 03 • {data.artifact.creator}
+              </div>
+              
+              <h3 className="text-4xl font-serif mb-6 text-neutral-900">
+                {data.artifact.name}
+              </h3>
+              
+              <p className="text-neutral-600 leading-relaxed mb-8 text-lg font-light">
+                {data.artifact.description}
+              </p>
+
+              <button className="group flex items-center gap-4 text-xs tracking-[0.2em] uppercase border-b border-neutral-900 pb-2 hover:opacity-60 transition-opacity">
+                {data.artifact.cta}
+                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* --- FOOTER --- */}
+      <footer className="bg-neutral-900 text-neutral-400 py-24 px-6">
+        <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
+          <div>
+            <div className="text-white text-xl font-serif mb-6">The Interval</div>
+            <p className="max-w-xs text-sm leading-relaxed opacity-60">
+              A digital sanctuary for the psychographic elite. 
+              The only 5 minutes of calm you need this week.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-12 text-xs tracking-widest uppercase">
+            <ul className="space-y-4">
+              <li className="text-white">Living Atlas</li>
+              <li className="hover:text-white cursor-pointer transition-colors">By City</li>
+              <li className="hover:text-white cursor-pointer transition-colors">By Mood</li>
+              <li className="hover:text-white cursor-pointer transition-colors">Archive</li>
+            </ul>
+            <ul className="space-y-4">
+              <li className="text-white">Account</li>
+              <li className="hover:text-white cursor-pointer transition-colors">Membership</li>
+              <li className="hover:text-white cursor-pointer transition-colors">Settings</li>
+              <li className="hover:text-white cursor-pointer transition-colors">Log Out</li>
+            </ul>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
-}
+};
+
+export default IssuePage;
