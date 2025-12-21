@@ -315,5 +315,3 @@ const IssuePage = ({ data = EMPTY_CONTENT }: { data?: IssueContent }) => {
     </div>
   );
 };
-
-export default IssuePage;
