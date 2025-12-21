@@ -13,75 +13,97 @@ import CalmEntry from '../../components/CalmEntry';
 export default function IssuePage() {
   const params = useParams();
   const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!params?.slug) return;
-      // FETCH EVERYTHING (No filtering, raw object)
-      const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]`;
+      
       try {
+        // 1. TARGET 'signalImages' DIRECTLY
+        const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
+          ...,
+          signalImages, 
+          linkedArtifact->{ ... }
+        }`;
+        
         const result = await client.fetch(query);
+        console.log("✅ FRESH DATA:", result); // Verify in console
         setData(result);
       } catch (e) {
         console.error(e);
+      } finally {
+        setLoading(false);
       }
     };
+    
     fetchData();
   }, [params?.slug]);
 
-  if (!data) return <div className="p-10">Loading Detective...</div>;
+  if (loading) return <div className="min-h-screen bg-primary-bg" />;
+  if (!data) return <div className="min-h-screen flex items-center justify-center">Issue not found</div>;
 
-  // --- THE ON-SCREEN DETECTIVE ---
-  // We look for any field that might look like a list of images
-  const candidateFields = Object.keys(data).filter(key => 
-     Array.isArray(data[key]) && key !== 'moodTags' && key !== 'content'
-  );
+  // 2. PROCESS IMAGES
+  // We take the specific 'signalImages' field and convert it to URLs
+  const rawImages = data.signalImages || [];
+  
+  const processedImages = rawImages.map((img: any) => {
+    try {
+      return urlFor(img).width(1200).url();
+    } catch (e) {
+      return null;
+    }
+  }).filter(Boolean); // Removes any nulls
 
   return (
-    <main className="bg-primary-bg min-h-screen relative">
-      
-      {/* 🕵️‍♂️ THE DEBUG OVERLAY (Black Box) */}
-      <div className="fixed inset-0 z-[9999] bg-black/90 text-green-400 p-8 font-mono text-sm overflow-auto backdrop-blur-xl">
-        <h1 className="text-2xl font-bold text-white mb-4">🕵️‍♂️ DATA INVESTIGATION</h1>
+    <CalmEntry>
+      <main className="bg-primary-bg min-h-screen">
         
-        <div className="mb-8 border border-green-800 p-4 bg-green-900/20 rounded">
-          <h2 className="text-white font-bold mb-2">1. THE FIELD NAMES (Your "ID Card")</h2>
-          <p className="break-words leading-relaxed text-xs text-green-300">
-            {Object.keys(data).join(', ')}
-          </p>
-        </div>
-
-        <div className="mb-8 border border-yellow-800 p-4 bg-yellow-900/20 rounded">
-          <h2 className="text-white font-bold mb-2">2. SUSPICIOUS ARRAYS (Is your image list here?)</h2>
-          {candidateFields.length > 0 ? (
-            candidateFields.map(field => (
-              <div key={field} className="mb-4">
-                <span className="text-yellow-400 font-bold">{field}</span>: 
-                <span className="ml-2 text-white">Found {data[field].length} items.</span>
-                <pre className="mt-2 text-[10px] text-gray-400 bg-black p-2 rounded">
-                  {JSON.stringify(data[field][0], null, 2).substring(0, 200)}...
-                </pre>
-              </div>
-            ))
-          ) : (
-             <p className="text-red-400">No arrays found! The images might be hidden inside a "Page Builder" block.</p>
-          )}
-        </div>
-        
-        <p className="text-white/50 text-xs mt-8">
-          Scroll down to see the normal site underneath...
-        </p>
-      </div>
-
-      {/* NORMAL SITE CONTENT (Hidden underneath) */}
-      <div className="opacity-20 pointer-events-none">
         <IssueHero 
-          issueNumber={data.issueNumber} 
-          title={data.title} 
-          imageSrc={data.coverImage ? urlFor(data.coverImage).url() : ''} 
+          issueNumber={data.issueNumber}
+          title={data.title}
+          imageSrc={data.coverImage ? urlFor(data.coverImage).url() : ''}
         />
-      </div>
 
-    </main>
+        <ThesisModule text={data.thesisBody || data.thesis} />
+
+        {/* 3. PASS CLEAN URLS TO COMPONENT */}
+        <SignalAnalysis 
+          studioName={data.signalStudio}
+          context={data.signalContext}
+          method={data.signalMethod}
+          images={processedImages} 
+          tags={[]} 
+        />
+
+        {/* Artifact Section */}
+        <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F0F0F0]">
+          <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown/60">
+            III. The Artifact
+          </span>
+          {data.linkedArtifact && (
+             <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
+                <div className="w-full h-[500px] bg-[#E5E5E5] relative overflow-hidden">
+                   {data.linkedArtifact.image || data.linkedArtifact.coverImage ? (
+                      <img 
+                        src={urlFor(data.linkedArtifact.image || data.linkedArtifact.coverImage).url()} 
+                        alt="Artifact"
+                        className="w-full h-full object-cover"
+                      />
+                   ) : <div className="w-full h-full bg-gray-200" />}
+                </div>
+                <div className="p-12 flex flex-col items-center text-center bg-white">
+                  <h3 className="mb-4 font-serif-title text-2xl text-gray-900">{data.linkedArtifact.title}</h3>
+                  <p className="mb-8 font-sans-body text-xs leading-relaxed text-gray-500 max-w-[280px]">
+                    {data.linkedArtifact.note || data.linkedArtifact.description}
+                  </p>
+                  <ArtifactButton title="Acquire" link={data.linkedArtifact.link || '#'} />
+                </div>
+             </div>
+          )}
+        </section>
+
+      </main>
+    </CalmEntry>
   );
 }
