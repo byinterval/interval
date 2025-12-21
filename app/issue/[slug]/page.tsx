@@ -15,6 +15,25 @@ const client = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 });
 
+// --- HELPER: THE IMAGE HUNTER ---
+// This function recursively looks for a URL in the raw Sanity data.
+// It solves the "Nested Object" problem.
+function extractUrl(item: any): string | null {
+  if (!item) return null;
+  if (typeof item === 'string') return item; // It's already a URL
+  
+  // Check standard locations
+  if (item.asset?.url) return item.asset.url; 
+  if (item.url) return item.url;
+  
+  // Check nested object locations (common in Page Builders)
+  if (item.image?.asset?.url) return item.image.asset.url;
+  if (item.photo?.asset?.url) return item.photo.asset.url;
+  if (item.file?.asset?.url) return item.file.asset.url;
+  
+  return null;
+}
+
 // 2. DATA FETCHING
 async function getIssueData(slug: string) {
   try {
@@ -30,16 +49,20 @@ async function getIssueData(slug: string) {
         "context": coalesce(signalContext, ""),
         "method": coalesce(signalMethod, ""),
         
-        // FIX: DEEP DIVE IMAGE FETCHING
-        // We look for the URL at the top level, OR inside an 'image' property, OR inside a 'photo' property.
+        // --- FETCH RAW DATA ---
+        // We fetch the 'signalImages' array with full expansion of the 'asset' reference.
+        // We DO NOT try to guess the path here. We grab it all.
         "rawSignalImages": signalImages[]{
-            "url": coalesce(asset->url, image.asset->url, photo.asset->url, file.asset->url)
-        }.url,
-
-        // Fallback Gallery
+            ..., 
+            asset->{url},
+            "image": image { asset->{url} }
+        },
+        
+        // Fallback: Check 'images' field (legacy name)
         "rawGallery": images[]{
-            "url": coalesce(asset->url, image.asset->url)
-        }.url,
+            ..., 
+            asset->{url}
+        },
         
         "geoTag": coalesce(cityTag->title, cityTag->label, cityTag->name, "City"),
         "seasonTag": coalesce(seasonTag->title, seasonTag->label, seasonTag->name, "Season"),
@@ -66,19 +89,18 @@ async function getIssueData(slug: string) {
     
     if (!data) return null;
 
-    // 3. LOGIC: CLEAN & FALLBACK
-    // Filter out any nulls that might have snuck in from empty objects
-    const cleanSignalImages = (data.signal.rawSignalImages || []).filter((url: string) => url);
-    const cleanGallery = (data.signal.rawGallery || []).filter((url: string) => url);
+    // 3. LOGIC: EXTRACT & FALLBACK
+    // Run the 'extractUrl' hunter on whatever array we found.
+    const signalUrls = (data.signal.rawSignalImages || []).map(extractUrl).filter(Boolean);
+    const galleryUrls = (data.signal.rawGallery || []).map(extractUrl).filter(Boolean);
 
-    // Decide which list to use
-    const finalImages = cleanSignalImages.length > 0
-      ? cleanSignalImages
-      : cleanGallery.length > 0
-        ? cleanGallery
-        : [data.coverImage]; // Absolute fallback
+    // Decision Logic: Signal Images > Gallery > Cover Image
+    const finalImages = signalUrls.length > 0 
+      ? signalUrls 
+      : galleryUrls.length > 0 
+        ? galleryUrls 
+        : [data.coverImage].filter(Boolean);
 
-    // Inject back into data object
     data.signal.images = finalImages;
 
     return data;
