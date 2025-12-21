@@ -6,7 +6,7 @@ import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
-// --- 1. CONFIGURATION ---
+// 1. CONFIGURATION
 const client = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
   dataset: 'production',
@@ -15,7 +15,7 @@ const client = createClient({
   token: process.env.SANITY_API_WRITE_TOKEN,
 });
 
-// --- 2. DATA FETCHING ---
+// 2. DATA FETCHING
 async function getIssueData(slug: string) {
   try {
     const query = `*[_type == "issue" && slug.current == $slug][0]{
@@ -30,15 +30,16 @@ async function getIssueData(slug: string) {
         "context": coalesce(signalContext, ""),
         "method": coalesce(signalMethod, ""),
         
-        // FIX: ROBUST IMAGE FETCHING (The Dragnet)
-        // We look for arrays named 'signalImages' or 'images'.
-        // If those fail, we fall back to the cover image as a single item array.
-        "images": coalesce(
-          signalImages[].asset->url, 
-          images[].asset->url, 
-          [coverImage.asset->url], 
-          []
-        ),
+        // FIX: DEEP DIVE IMAGE FETCHING
+        // We look for the URL at the top level, OR inside an 'image' property, OR inside a 'photo' property.
+        "rawSignalImages": signalImages[]{
+            "url": coalesce(asset->url, image.asset->url, photo.asset->url, file.asset->url)
+        }.url,
+
+        // Fallback Gallery
+        "rawGallery": images[]{
+            "url": coalesce(asset->url, image.asset->url)
+        }.url,
         
         "geoTag": coalesce(cityTag->title, cityTag->label, cityTag->name, "City"),
         "seasonTag": coalesce(seasonTag->title, seasonTag->label, seasonTag->name, "Season"),
@@ -61,14 +62,33 @@ async function getIssueData(slug: string) {
       }
     }`;
 
-    return await client.fetch(query, { slug });
+    const data = await client.fetch(query, { slug });
+    
+    if (!data) return null;
+
+    // 3. LOGIC: CLEAN & FALLBACK
+    // Filter out any nulls that might have snuck in from empty objects
+    const cleanSignalImages = (data.signal.rawSignalImages || []).filter((url: string) => url);
+    const cleanGallery = (data.signal.rawGallery || []).filter((url: string) => url);
+
+    // Decide which list to use
+    const finalImages = cleanSignalImages.length > 0
+      ? cleanSignalImages
+      : cleanGallery.length > 0
+        ? cleanGallery
+        : [data.coverImage]; // Absolute fallback
+
+    // Inject back into data object
+    data.signal.images = finalImages;
+
+    return data;
   } catch (error) {
     console.error("Fetch error:", error);
     return null;
   }
 }
 
-// --- 3. PAGE COMPONENT ---
+// 4. PAGE COMPONENT
 export default async function IssuePage(props: any) {
   const params = await Promise.resolve(props.params);
   const data = await getIssueData(params.slug);
@@ -89,12 +109,12 @@ export default async function IssuePage(props: any) {
         {/* THESIS */}
         <ThesisModule text={data.thesis} />
 
-        {/* SIGNAL (With Fixed Data Passing) */}
+        {/* SIGNAL */}
         <SignalAnalysis 
           studioName={data.signal.studio}
           context={data.signal.context}
           method={data.signal.method}
-          images={data.signal.images}
+          images={data.signal.images} 
           tags={[
             { label: "City", value: data.signal.geoTag },
             { label: "Season", value: data.signal.seasonTag },
