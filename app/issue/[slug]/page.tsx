@@ -1,131 +1,147 @@
 import { notFound } from 'next/navigation';
-import { createClient } from 'next-sanity';
+// USE THE SHARED CLIENT (Same as Atlas)
+import { client } from '@/lib/sanity'; 
+import { urlFor } from '@/lib/image';
 import IssueHero from '../../components/IssueHero';
 import ThesisModule from '../../components/ThesisModule';
 import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
-// 1. CONFIGURATION
-const client = createClient({
-  projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-  dataset: 'production',
-  apiVersion: '2024-01-01',
-  useCdn: false,
-  token: process.env.SANITY_API_WRITE_TOKEN,
-});
+export const revalidate = 0; // Force dynamic data fetching (Disable Cache)
 
-// 2. DATA FETCHING
 async function getIssueData(slug: string) {
   try {
-    // We fetch the RAW arrays (signalImages, images) without trying to convert them yet.
+    // 1. SIMPLE QUERY (No complex coalescing)
+    // We fetch the raw arrays exactly as they are in the database.
     const query = `*[_type == "issue" && slug.current == $slug][0]{
       "slug": slug.current,
-      "issueNumber": coalesce(issueNumber, "00"),
-      "title": coalesce(title, "Untitled"),
-      "coverImage": coverImage,
-      "thesis": coalesce(thesisBody, thesis, ""),
+      issueNumber,
+      title,
+      coverImage,
+      "thesis": coalesce(thesisBody, thesis),
       
-      "signal": {
-        "studio": coalesce(signalStudio, "Unknown Studio"),
-        "context": coalesce(signalContext, ""),
-        "method": coalesce(signalMethod, ""),
-        
-        // FETCH RAW DATA (Let the component handle the URLs)
-        "rawSignalImages": coalesce(signalImages, []),
-        "rawGallery": coalesce(images, []),
-        
-        "geoTag": coalesce(cityTag->title, cityTag->label, cityTag->name, "City"),
-        "seasonTag": coalesce(seasonTag->title, seasonTag->label, seasonTag->name, "Season"),
-        "moodTags": moodTags[]->title
-      },
+      // RAW DATA FETCHING
+      signalStudio,
+      signalContext,
+      signalMethod,
+      signalImages, 
+      images, // Legacy support
+      
+      cityTag->,
+      seasonTag->,
+      moodTags[]->,
 
       "artifact": linkedArtifact->{
         title,
         subtitle,
-        "note": coalesce(description, curatorNote, note, pt::text(body), subtitle, ""),
-        // Fetch raw image objects for the artifact too
-        "imageObj": coalesce(image, coverImage, mainImage, photo, artifactImage, asset),
+        description,
+        curatorNote,
+        note,
+        body,
+        // FETCH RAW ARTIFACT IMAGE
+        image,
+        coverImage,
+        mainImage,
+        photo,
+        asset,
         link
       }
     }`;
 
     const data = await client.fetch(query, { slug });
-    
-    if (!data) return null;
-
-    // 3. LOGIC: Fallback Priority
-    // If signal images exist, use them. Otherwise gallery. Otherwise cover image.
-    const hasSignalImages = data.signal.rawSignalImages && data.signal.rawSignalImages.length > 0;
-    const hasGallery = data.signal.rawGallery && data.signal.rawGallery.length > 0;
-
-    const finalImages = hasSignalImages 
-      ? data.signal.rawSignalImages 
-      : hasGallery 
-        ? data.signal.rawGallery 
-        : [data.coverImage]; // Absolute fallback
-
-    data.signal.images = finalImages;
-
     return data;
+
   } catch (error) {
-    console.error("Fetch error:", error);
+    console.error("Sanity Fetch Error:", error);
     return null;
   }
 }
 
-// 3. PAGE COMPONENT
 export default async function IssuePage(props: any) {
   const params = await Promise.resolve(props.params);
   const data = await getIssueData(params.slug);
 
   if (!data) notFound();
 
+  // --- PRE-PROCESS DATA (Like Atlas does) ---
+  
+  // 1. Resolve Signal Images
+  // We check signalImages -> then images -> then coverImage
+  let rawSignalImages = data.signalImages || data.images || [];
+  if (rawSignalImages.length === 0 && data.coverImage) {
+    rawSignalImages = [data.coverImage];
+  }
+
+  // 2. Resolve Tags
+  const city = data.cityTag?.title || data.cityTag?.label || data.cityTag?.name || "City";
+  const season = data.seasonTag?.title || data.seasonTag?.label || data.seasonTag?.name || "Season";
+  const moodTags = (data.moodTags || []).map((t: any) => ({ label: "Mood", value: t.title }));
+
+  // 3. Resolve Artifact Image
+  const artImg = data.artifact?.image || data.artifact?.coverImage || data.artifact?.mainImage || data.artifact?.photo || data.artifact?.asset;
+  let artifactImageUrl = null;
+  if (artImg) {
+    try { artifactImageUrl = urlFor(artImg).url(); } catch (e) {}
+  }
+
+  // 4. Resolve Artifact Note
+  const artNote = data.artifact?.description || data.artifact?.curatorNote || data.artifact?.note || "The object speaks for itself.";
+
   return (
     <CalmEntry>
       <main className="bg-primary-bg min-h-screen">
         
         {/* HERO */}
-        {/* We assume IssueHero handles the 'urlFor' internally or we pass a placeholder for now */}
+        {/* We use urlFor to ensure the cover image works */}
         <IssueHero 
-          issueNumber={data.issueNumber}
-          title={data.title}
-          imageSrc={'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1000'} // Placeholder for safety, hero usually needs string
+          issueNumber={data.issueNumber || "00"}
+          title={data.title || "Untitled"}
+          imageSrc={data.coverImage ? urlFor(data.coverImage).url() : ''}
         />
 
         {/* THESIS */}
         <ThesisModule text={data.thesis} />
 
-        {/* SIGNAL - Now receiving RAW image objects */}
+        {/* SIGNAL */}
+        {/* We pass the RAW objects to the component, which now handles urlFor */}
         <SignalAnalysis 
-          studioName={data.signal.studio}
-          context={data.signal.context}
-          method={data.signal.method}
-          images={data.signal.images} 
+          studioName={data.signalStudio}
+          context={data.signalContext}
+          method={data.signalMethod}
+          images={rawSignalImages} 
           tags={[
-            { label: "City", value: data.signal.geoTag },
-            { label: "Season", value: data.signal.seasonTag },
-            ...(data.signal.moodTags || []).map((tag: string) => ({ label: "Mood", value: tag }))
-          ].filter(t => t.value)} 
+            { label: "City", value: city },
+            { label: "Season", value: season },
+            ...moodTags
+          ]} 
         />
 
-        {/* ARTIFACT - We will use the Artifact Component you have, but fix the image logic if needed */}
+        {/* ARTIFACT */}
         <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F0F0F0]">
           <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown/60">
             III. The Artifact
           </span>
           <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
             <div className="w-full h-[500px] bg-[#E5E5E5] relative overflow-hidden">
-               {/* NOTE: We aren't touching the artifact logic here to keep it simple. 
-                   Focus is fixing Signal Images first. */}
-               <div className="w-full h-full bg-gray-200" />
+              {artifactImageUrl ? (
+                <img 
+                  src={artifactImageUrl} 
+                  alt={data.artifact?.title || "Artifact"}
+                  className="w-full h-full object-cover block"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs uppercase tracking-widest">
+                  No Image Data
+                </div>
+              )}
             </div>
             <div className="p-12 flex flex-col items-center text-center bg-white">
               <h3 className="mb-4 font-serif-title text-2xl text-gray-900">
-                {data.artifact?.title || 'Untitled Artifact'}
+                {data.artifact?.title || 'Untitled'}
               </h3>
               <p className="mb-8 font-sans-body text-xs leading-relaxed text-gray-500 max-w-[280px]">
-                {data.artifact?.note}
+                {artNote}
               </p>
               <div className="mb-8 h-px w-12 bg-gray-200" />
               <ArtifactButton 
