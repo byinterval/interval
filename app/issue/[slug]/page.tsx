@@ -19,49 +19,40 @@ function manualUrlBuilder(source: any) {
     if (source.url && source.url.startsWith('http')) return source.url;
 
     // 2. Extract the Reference ID
-    // Handles cases: { asset: { _ref: ... } }, { _ref: ... }, or direct string
     const ref = source?.asset?._ref || source?._ref || (typeof source === 'string' ? source : null);
     
-    if (!ref) {
-      // console.warn("ManualBuilder: No reference found in source", source);
-      return null;
-    }
+    if (!ref) return null;
 
     // 3. Parse the Sanity ID
-    // Format: image-{ID}-{WIDTH}x{HEIGHT}-{FORMAT}
-    // Example: image-5d...-1000x800-jpg
     const parts = ref.split('-');
-    if (parts.length !== 4) {
-      // console.warn("ManualBuilder: Malformed reference ID", ref);
-      return null;
-    }
+    if (parts.length !== 4) return null;
 
     const id = parts[1];
     const dimensions = parts[2];
     const format = parts[3];
     
     // 4. Get Project Config
-    // CRITICAL FIX: If env var is missing, this usually breaks. 
-    // We try to get it from the imported client config if possible, or fail gracefully.
     let projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
     
-    // Fallback: Try to grab from the client object if accessible (depending on client setup)
-    if (!projectId && client && client.config) {
-        const config = client.config();
+    // Fallback: Try to grab from the client object
+    if (!projectId && client) {
+        // Try multiple access patterns for the config
+        const config = typeof client.config === 'function' ? client.config() : (client as any).config;
         if (config) projectId = config.projectId;
+        if (!projectId) projectId = (client as any).projectId; // Rare fallback
     }
 
     const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
 
     if (!projectId) {
-      console.error("❌ ManualBuilder Error: NEXT_PUBLIC_SANITY_PROJECT_ID is missing. Images cannot be constructed.");
+      console.warn("⚠️ ManualBuilder: Missing Project ID. Cannot construct URL.");
       return null;
     }
 
     // 5. Return Constructed URL
     return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${dimensions}.${format}`;
   } catch (e) {
-    console.error("ManualBuilder Exception:", e);
+    console.warn("ManualBuilder Exception:", e);
     return null;
   }
 }
@@ -74,14 +65,27 @@ export default function IssuePage() {
     const fetchData = async () => {
       if (!params?.slug) return;
       
-      // FIX: Query explicitly fetches 'url' from the asset reference
+      // FIX: Query aggressively looks for images in Referenced docs, Inline objects, and Arrays.
       const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
         ...,
         "coverImageUrl": coverImage.asset->url,
-        signalImages[]{ 
-          "url": asset->url,
-          asset 
-        }, 
+        
+        // 1. Array on Issue Document (Legacy)
+        signalImages[]{ "url": asset->url, asset },
+
+        // 2. Inline Object on Issue Document
+        signal {
+          images[]{ "url": asset->url, asset }
+        },
+
+        // 3. Reference to Separate Signal Document (v2.0 Architecture)
+        "signalRef": signal->{
+           title,
+           context,
+           method,
+           images[]{ "url": asset->url, asset }
+        },
+
         linkedArtifact->{ 
           ...,
           "imageUrl": image.asset->url,
@@ -103,20 +107,24 @@ export default function IssuePage() {
 
   if (!data) return <div className="min-h-screen bg-primary-bg" />;
 
-  // --- PROCESS IMAGES ROBUSTLY ---
-  const rawImages = data.signalImages || [];
+  // --- RESOLVE DATA SOURCE ---
+  // We prioritize the Reference (v2.0), then Inline, then Legacy Array
+  const resolvedSignal = data.signalRef || data.signal || {};
+  
+  // Aggregate all potential image sources
+  const rawImages = resolvedSignal.images || data.signalImages || [];
   
   const processedImages = rawImages.map((img: any) => {
-    // Priority 1: Use the URL returned directly by GROQ (most reliable)
     if (img?.url) return img.url;
-
-    // Priority 2: Attempt to construct it manually using the ID
     const manualUrl = manualUrlBuilder(img);
     if (manualUrl) return manualUrl;
-
-    console.warn("⚠️ Could not resolve image URL for:", img);
     return null;
   }).filter(Boolean);
+
+  // Fallback for Text Content (If moved to Reference)
+  const signalStudio = resolvedSignal.title || data.signalStudio;
+  const signalContext = resolvedSignal.context || data.signalContext;
+  const signalMethod = resolvedSignal.method || data.signalMethod;
 
   // Helper for safe artifact image resolution
   const getArtifactImage = () => {
@@ -125,7 +133,6 @@ export default function IssuePage() {
     return artifact.imageUrl || artifact.coverImageUrl || manualUrlBuilder(artifact.image || artifact.coverImage);
   };
 
-  // Helper for hero image resolution
   const getHeroImage = () => {
       return data.coverImageUrl || manualUrlBuilder(data.coverImage) || '';
   };
@@ -134,12 +141,17 @@ export default function IssuePage() {
     <CalmEntry>
       <main className="bg-primary-bg min-h-screen">
         
-        {/* DEBUG BAR: Visible only if images fail to load to help diagnose */}
-        {processedImages.length === 0 && rawImages.length > 0 && (
-          <div className="w-full bg-red-600 text-white text-center text-[10px] py-1 font-mono uppercase">
-             Debug: {rawImages.length} images found but 0 resolved. Check Console for Project ID errors.
-          </div>
-        )}
+        {/* DEBUG BAR: Remove after verifying fix */}
+        <div className="w-full bg-slate-900 text-white text-[10px] py-2 px-4 font-mono border-b border-slate-700">
+           <div className="max-w-4xl mx-auto flex justify-between">
+             <span>DEBUG MODE</span>
+             <span>
+               RAW: {rawImages.length} | 
+               PROCESSED: {processedImages.length} | 
+               SOURCE: {data.signalRef ? 'Reference (v2.0)' : data.signalImages ? 'Array (Legacy)' : 'Unknown'}
+             </span>
+           </div>
+        </div>
 
         <IssueHero 
           issueNumber={data.issueNumber}
@@ -150,10 +162,10 @@ export default function IssuePage() {
         <ThesisModule text={data.thesisBody || data.thesis} />
 
         <SignalAnalysis 
-          studioName={data.signalStudio}
-          context={data.signalContext}
-          method={data.signalMethod}
-          images={processedImages} 
+          studioName={signalStudio}
+          context={signalContext}
+          method={signalMethod}
+          images={processedImages.length > 0 ? processedImages : ['https://placehold.co/800x600/E5E5E5/A3A3A3?text=No+Images+Found']} 
           tags={[]} 
         />
 
