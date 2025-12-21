@@ -7,9 +7,8 @@ import IssueHero from '../../components/IssueHero';
 import ThesisModule from '../../components/ThesisModule';
 import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
-import CalmEntry from '../../components/CalmEntry';
 
-// --- THE MANUAL BUILDER (Robust Fallback) ---
+// --- THE MANUAL BUILDER (Debug Version) ---
 function manualUrlBuilder(source: any) {
   try {
     if (!source) return null;
@@ -21,12 +20,12 @@ function manualUrlBuilder(source: any) {
     // 2. Extract the Reference ID
     const ref = source?.asset?._ref || source?._ref || (typeof source === 'string' ? source : null);
     
-    if (!ref) return null;
+    // Fallback: If no ref, return a placeholder so we know data exists but format is wrong
+    if (!ref) return 'https://placehold.co/600x400/orange/white?text=Invalid+Ref+Format';
 
     // 3. Parse the Sanity ID
-    // Format: image-{ID}-{WIDTH}x{HEIGHT}-{FORMAT}
     const parts = ref.split('-');
-    if (parts.length !== 4) return null;
+    if (parts.length !== 4) return 'https://placehold.co/600x400/orange/white?text=Malformed+ID';
 
     const id = parts[1];
     const dimensions = parts[2];
@@ -44,16 +43,16 @@ function manualUrlBuilder(source: any) {
 
     const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
 
+    // CRITICAL: If ID is missing, return a loud error image
     if (!projectId) {
-      // We will catch this in the UI now
-      return null;
+      return 'https://placehold.co/600x400/red/white?text=MISSING+PROJECT+ID';
     }
 
     // 5. Return Constructed URL
     return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${dimensions}.${format}`;
   } catch (e) {
     console.warn("ManualBuilder Exception:", e);
-    return null;
+    return 'https://placehold.co/600x400/black/white?text=Builder+Exception';
   }
 }
 
@@ -67,6 +66,7 @@ export default function IssuePage() {
     const fetchData = async () => {
       if (!params?.slug) return;
       
+      // Fetch data from all potential schema locations
       const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
         ...,
         "coverImageUrl": coverImage.asset->url,
@@ -108,77 +108,61 @@ export default function IssuePage() {
     fetchData();
   }, [params?.slug]);
 
-  // --- RESOLVE DATA SOURCE (Fail-Safe) ---
+  // --- PROCESSING LOGIC ---
   const resolvedSignal = data?.signalRef || data?.signal || {};
   const rawImages = resolvedSignal.images || data?.signalImages || [];
   
+  // Use map to generate URLs or placeholders
   const processedImages = rawImages.map((img: any) => {
     if (img?.url) return img.url;
-    const manualUrl = manualUrlBuilder(img);
-    if (manualUrl) return manualUrl;
-    return null; // Don't filter here so we can count failures
+    return manualUrlBuilder(img);
   });
-
+  
+  // Filter out strict nulls, but keep error placeholders
   const validImages = processedImages.filter(Boolean);
-  const failedCount = processedImages.length - validImages.length;
 
   const signalStudio = resolvedSignal.title || data?.signalStudio;
   const signalContext = resolvedSignal.context || data?.signalContext;
   const signalMethod = resolvedSignal.method || data?.signalMethod;
 
-  const getHeroImage = () => {
-      return data?.coverImageUrl || manualUrlBuilder(data?.coverImage) || '';
-  };
-  
+  const getHeroImage = () => data?.coverImageUrl || manualUrlBuilder(data?.coverImage) || '';
   const getArtifactImage = () => {
     if (!data?.linkedArtifact) return null;
-    const artifact = data.linkedArtifact;
-    return artifact.imageUrl || artifact.coverImageUrl || manualUrlBuilder(artifact.image || artifact.coverImage);
+    return data.linkedArtifact.imageUrl || manualUrlBuilder(data.linkedArtifact.image);
   };
 
   return (
-    <CalmEntry>
-      <main className="bg-primary-bg min-h-screen relative">
-        
-        {/* DEBUG BAR: Always Visible (Z-Index High) */}
-        <div className="fixed top-0 left-0 right-0 z-[9999] bg-slate-900 text-white text-[10px] py-2 px-4 font-mono border-b border-slate-700 shadow-xl opacity-90 hover:opacity-100 transition-opacity">
-           <div className="max-w-6xl mx-auto flex flex-wrap gap-4 justify-between items-center">
-             <span className="font-bold text-yellow-400">DEBUG v4</span>
-             
-             {loading ? (
-                <span className="animate-pulse">Loading Sanity Data...</span>
-             ) : error ? (
-                <span className="text-red-400">Error: {error}</span>
-             ) : (
-                <>
-                   <span title="Source of Signal Data">
-                      SRC: {data?.signalRef ? 'REF (v2)' : data?.signal ? 'INLINE (v2)' : data?.signalImages ? 'LEGACY (v1)' : 'NONE'}
-                   </span>
-                   <span title="Images Found in Data">
-                      RAW: {rawImages.length}
-                   </span>
-                   <span title="Images Successfully Resolved">
-                      VALID: {validImages.length}
-                   </span>
-                   <span title="Images Failed to Resolve (Check Project ID)">
-                      FAILED: {failedCount}
-                   </span>
-                   <span title="Project ID Detected">
-                      PID: {process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? 'OK' : 'MISSING'}
-                   </span>
-                </>
-             )}
-           </div>
-        </div>
-
-        {/* LOADING STATE */}
-        {loading && (
-          <div className="h-screen w-full flex items-center justify-center">
-            <div className="text-accent-brown font-serif italic">Loading Issue...</div>
+    <>
+      {/* 🔴 FORCE-VISIBLE DEBUG OVERLAY (Fixed Position) 🔴 */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        backgroundColor: '#1e293b', // slate-800
+        color: '#ffffff',
+        padding: '12px',
+        zIndex: 99999, // Super high z-index
+        fontSize: '11px',
+        fontFamily: 'monospace',
+        borderBottom: '4px solid #ef4444', // red-500
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between' }}>
+          <div>
+            <strong style={{ color: '#facc15' }}>DEBUGGER ACTIVE</strong><br/>
+            STATUS: {loading ? 'Loading...' : error ? 'Error' : data ? 'Data Loaded' : 'No Data'}<br/>
+            PROJECT ID: {process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? '✅ Set' : '❌ MISSING'}
           </div>
-        )}
+          <div>
+            RAW IMAGES: {rawImages.length}<br/>
+            RESOLVED: {validImages.length}<br/>
+            SOURCE: {data?.signalRef ? 'Reference Doc' : data?.signal ? 'Inline Object' : 'Legacy Array'}
+          </div>
+        </div>
+      </div>
 
-        {/* CONTENT STATE */}
+      <main className="bg-primary-bg min-h-screen relative pt-24 pb-20">
         {!loading && data && (
           <>
             <IssueHero 
@@ -189,12 +173,22 @@ export default function IssuePage() {
 
             <ThesisModule text={data.thesisBody || data.thesis} />
 
+            {/* 📸 RAW DATA DUMP (To verify Sanity is returning data) */}
+            {rawImages.length > 0 && validImages.length === 0 && (
+               <div className="max-w-4xl mx-auto bg-red-100 p-4 mb-8 border border-red-400 text-red-900 rounded">
+                 <strong>CRITICAL DEBUG:</strong> Sanity returned data, but URLs failed.
+                 <pre className="mt-2 text-[10px] overflow-auto max-h-40 bg-white p-2">
+                   {JSON.stringify(rawImages, null, 2)}
+                 </pre>
+               </div>
+            )}
+
+            {/* MAIN COMPONENT */}
             <SignalAnalysis 
               studioName={signalStudio}
               context={signalContext}
               method={signalMethod}
-              // Fallback to placeholder if no valid images found so layout persists
-              images={validImages.length > 0 ? validImages : ['https://placehold.co/800x600/E5E5E5/A3A3A3?text=No+Signal+Images']} 
+              images={validImages.length > 0 ? validImages : ['https://placehold.co/800x600/E5E5E5/A3A3A3?text=No+Valid+Images']} 
               tags={[]} 
             />
 
@@ -226,7 +220,11 @@ export default function IssuePage() {
             </section>
           </>
         )}
+
+        {/* LOADING / ERROR STATES */}
+        {loading && <div className="text-center py-20">Loading Data...</div>}
+        {error && <div className="text-center py-20 text-red-600">Error: {error}</div>}
       </main>
-    </CalmEntry>
+    </>
   );
 }
