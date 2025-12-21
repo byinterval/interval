@@ -9,39 +9,59 @@ import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
 import CalmEntry from '../../components/CalmEntry';
 
-// --- THE MANUAL BUILDER (Fallback) ---
-// Kept as a backup for edge cases, but the primary data source is now the API directly.
+// --- THE MANUAL BUILDER (Robust Fallback) ---
 function manualUrlBuilder(source: any) {
   try {
-    // If it's already a string URL, return it
+    if (!source) return null;
+
+    // 1. If it's already a full URL, return it
     if (typeof source === 'string' && source.startsWith('http')) return source;
+    if (source.url && source.url.startsWith('http')) return source.url;
+
+    // 2. Extract the Reference ID
+    // Handles cases: { asset: { _ref: ... } }, { _ref: ... }, or direct string
+    const ref = source?.asset?._ref || source?._ref || (typeof source === 'string' ? source : null);
     
-    // Check for direct URL property first (from updated query)
-    if (source?.url) return source.url;
+    if (!ref) {
+      // console.warn("ManualBuilder: No reference found in source", source);
+      return null;
+    }
 
-    // 1. Get the Reference ID
-    const ref = source?.asset?._ref || source?._ref || source?.asset?.url;
-    if (typeof ref === 'string' && ref.startsWith('http')) return ref;
-    if (!ref) return null;
-
-    // 2. Parse the ID (image-{ID}-{WIDTH}x{HEIGHT}-{FORMAT})
+    // 3. Parse the Sanity ID
+    // Format: image-{ID}-{WIDTH}x{HEIGHT}-{FORMAT}
+    // Example: image-5d...-1000x800-jpg
     const parts = ref.split('-');
-    if (parts.length !== 4) return null;
+    if (parts.length !== 4) {
+      // console.warn("ManualBuilder: Malformed reference ID", ref);
+      return null;
+    }
 
     const id = parts[1];
     const dimensions = parts[2];
     const format = parts[3];
     
-    const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
-    const dataset = 'production';
+    // 4. Get Project Config
+    // CRITICAL FIX: If env var is missing, this usually breaks. 
+    // We try to get it from the imported client config if possible, or fail gracefully.
+    let projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+    
+    // Fallback: Try to grab from the client object if accessible (depending on client setup)
+    if (!projectId && client && client.config) {
+        const config = client.config();
+        if (config) projectId = config.projectId;
+    }
 
-    // If project ID is missing, this builder fails silently in production
-    if (!projectId) return null;
+    const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
 
-    // 3. Construct the String
+    if (!projectId) {
+      console.error("❌ ManualBuilder Error: NEXT_PUBLIC_SANITY_PROJECT_ID is missing. Images cannot be constructed.");
+      return null;
+    }
+
+    // 5. Return Constructed URL
     return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${dimensions}.${format}`;
   } catch (e) {
-    console.error("URL Builder Error:", e);
+    console.error("ManualBuilder Exception:", e);
     return null;
   }
 }
@@ -54,8 +74,7 @@ export default function IssuePage() {
     const fetchData = async () => {
       if (!params?.slug) return;
       
-      // FIX: Updated query to fetch fully resolved URLs directly from Sanity.
-      // This bypasses the need to manually construct URLs or rely on env vars.
+      // FIX: Query explicitly fetches 'url' from the asset reference
       const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
         ...,
         "coverImageUrl": coverImage.asset->url,
@@ -72,7 +91,7 @@ export default function IssuePage() {
       
       try {
         const result = await client.fetch(query);
-        // console.log("🔥 SANITY DATA (Resolved):", result);
+        console.log("🔥 SANITY DATA LOADED:", result);
         setData(result);
       } catch (e) {
         console.error("Sanity Fetch Error:", e);
@@ -85,21 +104,24 @@ export default function IssuePage() {
   if (!data) return <div className="min-h-screen bg-primary-bg" />;
 
   // --- PROCESS IMAGES ROBUSTLY ---
-  // Now we try the direct URL first, then fall back to the builder
   const rawImages = data.signalImages || [];
   
   const processedImages = rawImages.map((img: any) => {
-    // 1. Try the pre-fetched URL
-    if (img.url) return img.url;
-    // 2. Try the manual builder
-    return manualUrlBuilder(img);
+    // Priority 1: Use the URL returned directly by GROQ (most reliable)
+    if (img?.url) return img.url;
+
+    // Priority 2: Attempt to construct it manually using the ID
+    const manualUrl = manualUrlBuilder(img);
+    if (manualUrl) return manualUrl;
+
+    console.warn("⚠️ Could not resolve image URL for:", img);
+    return null;
   }).filter(Boolean);
 
   // Helper for safe artifact image resolution
   const getArtifactImage = () => {
     if (!data.linkedArtifact) return null;
     const artifact = data.linkedArtifact;
-    // Check all possible locations for the image URL
     return artifact.imageUrl || artifact.coverImageUrl || manualUrlBuilder(artifact.image || artifact.coverImage);
   };
 
@@ -112,11 +134,12 @@ export default function IssuePage() {
     <CalmEntry>
       <main className="bg-primary-bg min-h-screen">
         
-        {/* DEBUG BAR: Remove this div when confident the fix works */}
-        {/* <div className="w-full bg-emerald-600 text-white text-center text-[10px] py-1 font-mono uppercase">
-           Status: Robust URL Fetching Active • {processedImages.length} Signals Loaded
-        </div> 
-        */}
+        {/* DEBUG BAR: Visible only if images fail to load to help diagnose */}
+        {processedImages.length === 0 && rawImages.length > 0 && (
+          <div className="w-full bg-red-600 text-white text-center text-[10px] py-1 font-mono uppercase">
+             Debug: {rawImages.length} images found but 0 resolved. Check Console for Project ID errors.
+          </div>
+        )}
 
         <IssueHero 
           issueNumber={data.issueNumber}
