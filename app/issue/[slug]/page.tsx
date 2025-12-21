@@ -7,8 +7,10 @@ import IssueHero from '../../components/IssueHero';
 import ThesisModule from '../../components/ThesisModule';
 import SignalAnalysis from '../../components/SignalAnalysis';
 import ArtifactButton from '../../components/ArtifactButton';
+import CalmEntry from '../../components/CalmEntry';
 
-// --- THE MANUAL BUILDER (Debug Version) ---
+// --- ROBUST URL BUILDER ---
+// Handles missing Project IDs by returning a visual placeholder instead of breaking.
 function manualUrlBuilder(source: any) {
   try {
     if (!source) return null;
@@ -19,67 +21,72 @@ function manualUrlBuilder(source: any) {
 
     // 2. Extract the Reference ID
     const ref = source?.asset?._ref || source?._ref || (typeof source === 'string' ? source : null);
-    
-    // Fallback: If no ref, return a placeholder so we know data exists but format is wrong
-    if (!ref) return 'https://placehold.co/600x400/orange/white?text=Invalid+Ref+Format';
+    if (!ref) return null;
 
     // 3. Parse the Sanity ID
     const parts = ref.split('-');
-    if (parts.length !== 4) return 'https://placehold.co/600x400/orange/white?text=Malformed+ID';
+    // Expected format: image-{ID}-{WIDTH}x{HEIGHT}-{FORMAT}
+    if (parts.length !== 4) return null;
 
     const id = parts[1];
     const dimensions = parts[2];
     const format = parts[3];
     
-    // 4. Get Project Config
+    // 4. Get Project Config (Env or Client Fallback)
     let projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
     
-    // Fallback: Try to grab from the client object
     if (!projectId && client) {
-        const config = typeof client.config === 'function' ? client.config() : (client as any).config;
-        if (config) projectId = config?.projectId;
-        if (!projectId) projectId = (client as any).projectId;
+        // Safe access to client config
+        const config = (client as any).config ? 
+          (typeof (client as any).config === 'function' ? (client as any).config() : (client as any).config) 
+          : null;
+        if (config) projectId = config.projectId;
     }
 
     const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production';
 
-    // CRITICAL: If ID is missing, return a loud error image
+    // 5. CRITICAL FALLBACK: If Project ID is missing, return a placeholder
+    // This ensures the user sees *something* (grey box) rather than empty space.
     if (!projectId) {
-      return 'https://placehold.co/600x400/red/white?text=MISSING+PROJECT+ID';
+      console.warn("⚠️ Sanity Project ID missing. Using placeholder.");
+      return `https://placehold.co/${dimensions.split('x')[0]}x${dimensions.split('x')[1]}/E5E5E5/A3A3A3?text=Missing+Project+ID`;
     }
 
-    // 5. Return Constructed URL
+    // 6. Return Valid URL
     return `https://cdn.sanity.io/images/${projectId}/${dataset}/${id}-${dimensions}.${format}`;
   } catch (e) {
-    console.warn("ManualBuilder Exception:", e);
-    return 'https://placehold.co/600x400/black/white?text=Builder+Exception';
+    console.error("UrlBuilder Error:", e);
+    return 'https://placehold.co/800x600/E5E5E5/A3A3A3?text=Error';
   }
 }
 
 export default function IssuePage() {
   const params = useParams();
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Use a fallback state so the page renders "Loading" instead of crashing
+  const [status, setStatus] = useState<'LOADING' | 'SUCCESS' | 'ERROR'>('LOADING');
 
   useEffect(() => {
     const fetchData = async () => {
       if (!params?.slug) return;
       
-      // Fetch data from all potential schema locations
+      console.log("🚀 Fetching Issue:", params.slug);
+
+      // QUERY: Checks both legacy and v2.0 schema locations
       const query = `*[_type == "issue" && slug.current == "${params.slug}"][0]{
         ...,
         "coverImageUrl": coverImage.asset->url,
         
-        // 1. Array on Issue Document (Legacy)
+        // Location 1: Legacy Array
         signalImages[]{ "url": asset->url, asset },
 
-        // 2. Inline Object on Issue Document
+        // Location 2: Nested Object (v2.0)
         signal {
           images[]{ "url": asset->url, asset }
         },
 
-        // 3. Reference to Separate Signal Document (v2.0 Architecture)
+        // Location 3: Reference (v2.0)
         "signalRef": signal->{
            title,
            context,
@@ -96,135 +103,102 @@ export default function IssuePage() {
       
       try {
         const result = await client.fetch(query);
-        setData(result);
-      } catch (e: any) {
-        console.error("Sanity Fetch Error:", e);
-        setError(e.message || "Failed to fetch data");
-      } finally {
-        setLoading(false);
+        console.log("✅ Sanity Result:", result);
+        
+        if (result) {
+          setData(result);
+          setStatus('SUCCESS');
+        } else {
+          console.warn("❌ No data found for slug");
+          setStatus('ERROR');
+        }
+      } catch (e) {
+        console.error("❌ Sanity Fetch Error:", e);
+        setStatus('ERROR');
       }
     };
     
     fetchData();
   }, [params?.slug]);
 
-  // --- PROCESSING LOGIC ---
-  const resolvedSignal = data?.signalRef || data?.signal || {};
-  const rawImages = resolvedSignal.images || data?.signalImages || [];
+  if (status === 'LOADING') return <div className="min-h-screen bg-primary-bg flex items-center justify-center">Loading...</div>;
+  if (status === 'ERROR' || !data) return <div className="min-h-screen bg-primary-bg flex items-center justify-center">Issue Not Found</div>;
+
+  // --- DATA PROCESSING ---
   
-  // Use map to generate URLs or placeholders
+  // Resolve Signal Data (Priority: Ref -> Inline -> Legacy)
+  const resolvedSignal = data.signalRef || data.signal || {};
+  const signalTitle = resolvedSignal.title || data.signalStudio;
+  const signalContext = resolvedSignal.context || data.signalContext;
+  const signalMethod = resolvedSignal.method || data.signalMethod;
+
+  // Resolve Images
+  const rawImages = resolvedSignal.images || data.signalImages || [];
   const processedImages = rawImages.map((img: any) => {
     if (img?.url) return img.url;
     return manualUrlBuilder(img);
-  });
-  
-  // Filter out strict nulls, but keep error placeholders
-  const validImages = processedImages.filter(Boolean);
+  }).filter(Boolean); // Filter out nulls
 
-  const signalStudio = resolvedSignal.title || data?.signalStudio;
-  const signalContext = resolvedSignal.context || data?.signalContext;
-  const signalMethod = resolvedSignal.method || data?.signalMethod;
+  // Fallback for Hero
+  const heroImage = data.coverImageUrl || manualUrlBuilder(data.coverImage) || '';
 
-  const getHeroImage = () => data?.coverImageUrl || manualUrlBuilder(data?.coverImage) || '';
+  // Fallback for Artifact
   const getArtifactImage = () => {
-    if (!data?.linkedArtifact) return null;
-    return data.linkedArtifact.imageUrl || manualUrlBuilder(data.linkedArtifact.image);
+    if (!data.linkedArtifact) return null;
+    const a = data.linkedArtifact;
+    return a.imageUrl || a.coverImageUrl || manualUrlBuilder(a.image || a.coverImage);
   };
 
   return (
-    <>
-      {/* 🔴 FORCE-VISIBLE DEBUG OVERLAY (Fixed Position) 🔴 */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        backgroundColor: '#1e293b', // slate-800
-        color: '#ffffff',
-        padding: '12px',
-        zIndex: 99999, // Super high z-index
-        fontSize: '11px',
-        fontFamily: 'monospace',
-        borderBottom: '4px solid #ef4444', // red-500
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between' }}>
-          <div>
-            <strong style={{ color: '#facc15' }}>DEBUGGER ACTIVE</strong><br/>
-            STATUS: {loading ? 'Loading...' : error ? 'Error' : data ? 'Data Loaded' : 'No Data'}<br/>
-            PROJECT ID: {process.env.NEXT_PUBLIC_SANITY_PROJECT_ID ? '✅ Set' : '❌ MISSING'}
-          </div>
-          <div>
-            RAW IMAGES: {rawImages.length}<br/>
-            RESOLVED: {validImages.length}<br/>
-            SOURCE: {data?.signalRef ? 'Reference Doc' : data?.signal ? 'Inline Object' : 'Legacy Array'}
-          </div>
-        </div>
-      </div>
+    <CalmEntry>
+      <main className="bg-primary-bg min-h-screen">
+        
+        <IssueHero 
+          issueNumber={data.issueNumber}
+          title={data.title}
+          imageSrc={heroImage}
+        />
 
-      <main className="bg-primary-bg min-h-screen relative pt-24 pb-20">
-        {!loading && data && (
-          <>
-            <IssueHero 
-              issueNumber={data.issueNumber}
-              title={data.title}
-              imageSrc={getHeroImage()}
-            />
+        <ThesisModule text={data.thesisBody || data.thesis} />
 
-            <ThesisModule text={data.thesisBody || data.thesis} />
+        {/* SIGNAL SECTION */}
+        <SignalAnalysis 
+          studioName={signalTitle}
+          context={signalContext}
+          method={signalMethod}
+          // Pass placeholders if processedImages is empty to prove component works
+          images={processedImages.length > 0 ? processedImages : ['https://placehold.co/600x800/E5E5E5/A3A3A3?text=No+Images']} 
+          tags={[]} 
+        />
 
-            {/* 📸 RAW DATA DUMP (To verify Sanity is returning data) */}
-            {rawImages.length > 0 && validImages.length === 0 && (
-               <div className="max-w-4xl mx-auto bg-red-100 p-4 mb-8 border border-red-400 text-red-900 rounded">
-                 <strong>CRITICAL DEBUG:</strong> Sanity returned data, but URLs failed.
-                 <pre className="mt-2 text-[10px] overflow-auto max-h-40 bg-white p-2">
-                   {JSON.stringify(rawImages, null, 2)}
-                 </pre>
-               </div>
-            )}
+        {/* ARTIFACT SECTION */}
+        <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F0F0F0]">
+          <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown/60">
+            III. The Artifact
+          </span>
+          {data.linkedArtifact && (
+             <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
+                <div className="w-full h-[500px] bg-[#E5E5E5] relative overflow-hidden">
+                   {getArtifactImage() ? (
+                      <img 
+                        src={getArtifactImage()!} 
+                        alt={data.linkedArtifact.title || "Artifact"}
+                        className="w-full h-full object-cover"
+                      />
+                   ) : <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-400">No Image</div>}
+                </div>
+                <div className="p-12 flex flex-col items-center text-center bg-white">
+                  <h3 className="mb-4 font-serif-title text-2xl text-gray-900">{data.linkedArtifact.title}</h3>
+                  <p className="mb-8 font-sans-body text-xs leading-relaxed text-gray-500 max-w-[280px]">
+                    {data.linkedArtifact.note || data.linkedArtifact.description}
+                  </p>
+                  <ArtifactButton title="Acquire" link={data.linkedArtifact.link || '#'} />
+                </div>
+             </div>
+          )}
+        </section>
 
-            {/* MAIN COMPONENT */}
-            <SignalAnalysis 
-              studioName={signalStudio}
-              context={signalContext}
-              method={signalMethod}
-              images={validImages.length > 0 ? validImages : ['https://placehold.co/800x600/E5E5E5/A3A3A3?text=No+Valid+Images']} 
-              tags={[]} 
-            />
-
-            {/* Artifact Section */}
-            <section className="py-24 px-6 min-h-screen flex flex-col items-center justify-center bg-[#F0F0F0]">
-              <span className="mb-12 font-sans-body text-[10px] uppercase tracking-[0.2em] text-accent-brown/60">
-                III. The Artifact
-              </span>
-              {data.linkedArtifact && (
-                 <div className="w-full max-w-[420px] bg-white shadow-2xl flex flex-col">
-                    <div className="w-full h-[500px] bg-[#E5E5E5] relative overflow-hidden">
-                       {getArtifactImage() ? (
-                          <img 
-                            src={getArtifactImage()!} 
-                            alt={data.linkedArtifact.title || "Artifact"}
-                            className="w-full h-full object-cover"
-                          />
-                       ) : <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-400">No Image</div>}
-                    </div>
-                    <div className="p-12 flex flex-col items-center text-center bg-white">
-                      <h3 className="mb-4 font-serif-title text-2xl text-gray-900">{data.linkedArtifact.title}</h3>
-                      <p className="mb-8 font-sans-body text-xs leading-relaxed text-gray-500 max-w-[280px]">
-                        {data.linkedArtifact.note || data.linkedArtifact.description}
-                      </p>
-                      <ArtifactButton title="Acquire" link={data.linkedArtifact.link || '#'} />
-                    </div>
-                 </div>
-              )}
-            </section>
-          </>
-        )}
-
-        {/* LOADING / ERROR STATES */}
-        {loading && <div className="text-center py-20">Loading Data...</div>}
-        {error && <div className="text-center py-20 text-red-600">Error: {error}</div>}
       </main>
-    </>
+    </CalmEntry>
   );
 }
